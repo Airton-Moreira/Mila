@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mila · Gestión de repostería</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500&family=Work+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div class="app-shell">
+
+  <!-- ===================== SIDEBAR ===================== -->
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">
+      <div class="brand-stamp" aria-hidden="true">
+        <svg viewBox="0 0 100 100" class="stamp-svg">
+          <circle cx="50" cy="50" r="46" class="stamp-ring"></circle>
+          <text x="50" y="45" text-anchor="middle" class="stamp-text">MILA</text>
+          <text x="50" y="63" text-anchor="middle" class="stamp-sub">REPOSTERÍA</text>
+        </svg>
+      </div>
+      <div class="brand-copy">
+        <strong>Mila</strong>
+        <span>gestión &amp; obrador</span>
+      </div>
+    </div>
+
+    <nav class="nav" id="nav">
+      <a href="#dashboard" data-view="dashboard" class="nav-link">
+        <span class="nav-ico">◆</span> Panel general
+      </a>
+      <a href="#pedidos" data-view="pedidos" class="nav-link">
+        <span class="nav-ico">✉</span> Pedidos
+      </a>
+      <a href="#clientes" data-view="clientes" class="nav-link">
+        <span class="nav-ico">♥</span> Clientes
+      </a>
+      <a href="#recetas" data-view="recetas" class="nav-link">
+        <span class="nav-ico">✦</span> Recetas
+      </a>
+      <a href="#inventario" data-view="inventario" class="nav-link">
+        <span class="nav-ico">▤</span> Inventario
+      </a>
+      <a href="#reportes" data-view="reportes" class="nav-link">
+        <span class="nav-ico">▲</span> Reportes
+      </a>
+    </nav>
+
+    <div class="sidebar-foot">
+      <p>Horno encendido desde<br><strong id="fecha-hoy-side"></strong></p>
+    </div>
+  </aside>
+
+  <!-- ===================== TOPBAR (mobile) ===================== -->
+  <header class="topbar">
+    <button class="menu-toggle" id="menuToggle" aria-label="Abrir menú">☰</button>
+    <div class="topbar-brand">Mila</div>
+  </header>
+
+  <!-- ===================== CONTENIDO ===================== -->
+  <main class="content" id="content">
+    <!-- Las vistas se inyectan dinámicamente por JS -->
+  </main>
+
+</div>
+
+<!-- ===================== MODAL GENÉRICO ===================== -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal-box" id="modalBox" role="dialog" aria-modal="true">
+    <div class="modal-head">
+      <h3 id="modalTitle">Título</h3>
+      <button class="modal-close" id="modalClose" aria-label="Cerrar">&times;</button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+  </div>
+</div>
+
+<!-- ===================== TOASTS ===================== -->
+<div class="toast-stack" id="toastStack"></div>
+
+<script src="js/storage.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/clientes.js"></script>
+<script src="js/inventario.js"></script>
+<script src="js/recetas.js"></script>
+<script src="js/pedidos.js"></script>
+<script src="js/reportes.js"></script>
+<script src="js/dashboard.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
