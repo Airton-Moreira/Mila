@@ -9,16 +9,17 @@ const supabaseClient = window.supabase.createClient(
 async function probarSupabase() {
     const { data, error } = await supabaseClient
         .from("negocios")
-        .select("id, nombre, tipo_negocio")
-        .limit(1);
+        .select("id, nombre, tipo_negocio");
+
+    console.log("=== PRUEBA SUPABASE ===");
+    console.log("DATA:", data);
+    console.log("ERROR:", error);
 
     if (error) {
         console.error("Error conectando con Supabase:", error);
         return;
     }
 
-    console.log("Supabase conectado correctamente:");
-    console.log(data);
+    console.log("Supabase conectado correctamente.");
 }
-
 probarSupabase();
