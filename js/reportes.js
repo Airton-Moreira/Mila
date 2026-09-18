@@ -8,6 +8,7 @@ const Reportes = (function () {
   let periodo = "mes"; // "hoy" | "semana" | "mes" | "personalizado"
   let desdeCustom = "";
   let hastaCustom = "";
+  let chartInstance = null;
 
   function render(container) {
     const rango = calcularRango();
@@ -75,7 +76,7 @@ const Reportes = (function () {
         </div>
       </div>
 
-      <div class="grid grid-2">
+      <div class="grid grid-3-reportes">
         <div class="card">
           <div class="section-title"><h2>Producto más vendido</h2></div>
           ${rankingProductos.length === 0 ? `<p class="text-muted">Sin ventas entregadas en este período.</p>` : `
@@ -96,6 +97,13 @@ const Reportes = (function () {
             <div class="row"><span>Ticket promedio</span><strong>${MilaUtils.money(entregados.length ? ventasTotales / entregados.length : 0)}</strong></div>
             <div class="row"><span>Costo promedio por pedido</span><strong>${MilaUtils.money(entregados.length ? costosTotales / entregados.length : 0)}</strong></div>
             <div class="row total"><span>Margen promedio</span><strong class="amount">${MilaUtils.pct(margenPromedio)}</strong></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="section-title"><h2>Ventas vs. Costos vs. Utilidad</h2></div>
+          <div style="position: relative; width: 100%; height: 210px;">
+            <canvas id="chartVentasCostosUtilidad"></canvas>
           </div>
         </div>
       </div>
@@ -119,6 +127,71 @@ const Reportes = (function () {
         </table>`}
       </div>
     `;
+
+    if (chartInstance) {
+      chartInstance.destroy();
+      chartInstance = null;
+    }
+
+    const ctx = document.getElementById("chartVentasCostosUtilidad");
+    if (ctx && typeof Chart !== "undefined") {
+      chartInstance = new Chart(ctx, {
+        type: "bar",
+        data: {
+          labels: ["Ventas", "Costos", "Utilidad"],
+          datasets: [{
+            label: "Monto",
+            data: [ventasTotales, costosTotales, utilidadTotal],
+            backgroundColor: [
+              "rgba(185, 143, 143, 0.85)",
+              "rgba(163, 155, 148, 0.75)",
+              "rgba(135, 145, 127, 0.85)"
+            ],
+            borderColor: [
+              "#956F6F",
+              "#6F6862",
+              "#697362"
+            ],
+            borderWidth: 1.5,
+            borderRadius: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: function (context) {
+                  return " " + MilaUtils.money(context.raw);
+                }
+              }
+            }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: {
+                callback: function (val) {
+                  return MilaUtils.money(val);
+                },
+                font: { family: "'Segoe UI', Arial, sans-serif", size: 10 },
+                color: "#6F6862"
+              },
+              grid: { color: "#EEEAE6" }
+            },
+            x: {
+              ticks: {
+                font: { family: "'Segoe UI', Arial, sans-serif", size: 11, weight: "600" },
+                color: "#292522"
+              },
+              grid: { display: false }
+            }
+          }
+        }
+      });
+    }
 
     container.querySelectorAll("[data-periodo]").forEach(b => b.addEventListener("click", () => { periodo = b.dataset.periodo; render(container); }));
     const btnAplicar = document.getElementById("btnAplicarRango");
