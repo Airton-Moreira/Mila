@@ -5,32 +5,43 @@
 
 const Dashboard = (function () {
 
-  function render(container) {
-    const pedidos = MilaDB.Pedidos.all();
-    const inventario = MilaDB.Inventario.all();
+  async function render(container) {
+    const [pedidos, inventario, recetas, clientes] = await Promise.all([
+      MilaDB.Pedidos.all(),
+      MilaDB.Inventario.all(),
+      MilaDB.Recetas.all(),
+      MilaDB.Clientes.all()
+    ]);
+
+    const recetasMap = new Map((recetas || []).map(r => [r.id, r.nombre]));
+    const clientesMap = new Map((clientes || []).map(c => [c.id, `${c.nombre} ${c.apellido || ""}`.trim()]));
+
+    const nombreReceta = id => recetasMap.get(id) || "Producto eliminado";
+    const nombreCliente = id => clientesMap.get(id) || "Cliente eliminado";
+
     const hoy = MilaUtils.todayYmd();
 
     const hoyDate = new Date(); hoyDate.setHours(0, 0, 0, 0);
     const inicioMes = new Date(hoyDate.getFullYear(), hoyDate.getMonth(), 1).toISOString().slice(0, 10);
 
-    const entregadosMes = pedidos.filter(p => p.estado === "Entregado" && (p.fechaEntregado || "").slice(0, 10) >= inicioMes);
+    const entregadosMes = (pedidos || []).filter(p => p.estado === "Entregado" && (p.fechaEntregado || "").slice(0, 10) >= inicioMes);
     const ventasMes = entregadosMes.reduce((s, p) => s + Number(p.total), 0);
     const utilidadMes = entregadosMes.reduce((s, p) => s + Number(p.utilidad), 0);
     const costoMes = entregadosMes.reduce((s, p) => s + Number(p.costoProduccion), 0);
     const margenMes = ventasMes > 0 ? (utilidadMes / ventasMes) * 100 : 0;
 
-    const pendientes = pedidos.filter(p => !["Entregado", "Cancelado"].includes(p.estado));
+    const pendientes = (pedidos || []).filter(p => !["Entregado", "Cancelado"].includes(p.estado));
     const proximas7 = pendientes.filter(p => {
       const d = MilaUtils.daysUntil(p.fechaEntrega);
       return d !== null && d >= 0 && d <= 7;
     });
-    const entregadosTotal = pedidos.filter(p => p.estado === "Entregado");
+    const entregadosTotal = (pedidos || []).filter(p => p.estado === "Entregado");
 
-    const bajoStock = inventario.filter(i => Number(i.stockActual) <= Number(i.stockMinimo));
+    const bajoStock = (inventario || []).filter(i => Number(i.stockActual) <= Number(i.stockMinimo));
 
     const porProducto = {};
     entregadosTotal.forEach(p => {
-      const nombre = MilaDB.nombreReceta(p.recetaId);
+      const nombre = nombreReceta(p.recetaId);
       porProducto[nombre] = (porProducto[nombre] || 0) + Number(p.cantidad);
     });
     const topProductos = Object.entries(porProducto).sort((a, b) => b[1] - a[1]).slice(0, 5);
@@ -101,8 +112,8 @@ const Dashboard = (function () {
               <tbody>
                 ${proximasEntregas.map(p => `
                   <tr>
-                    <td>${MilaUtils.escapeHtml(MilaDB.nombreCliente(p.clienteId))}</td>
-                    <td>${MilaUtils.escapeHtml(MilaDB.nombreReceta(p.recetaId))} × ${p.cantidad}</td>
+                    <td>${MilaUtils.escapeHtml(nombreCliente(p.clienteId))}</td>
+                    <td>${MilaUtils.escapeHtml(nombreReceta(p.recetaId))} × ${p.cantidad}</td>
                     <td class="text-muted">${MilaUtils.formatDate(p.fechaEntrega)}</td>
                     <td><span class="badge ${MilaUtils.estadoBadgeClass(p.estado)}">${p.estado}</span></td>
                     <td class="text-right num">${MilaUtils.money(p.total)}</td>

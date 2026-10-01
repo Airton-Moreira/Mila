@@ -11,7 +11,8 @@
     clientes: Clientes,
     recetas: Recetas,
     inventario: Inventario,
-    reportes: Reportes
+    reportes: Reportes,
+    asistente: Asistente
   };
 
   const DEFAULT_VIEW = "dashboard";
@@ -27,12 +28,12 @@
     });
   }
 
-  function navigate() {
+  async function navigate() {
     const view = getViewFromHash();
     setActiveNav(view);
     const content = document.getElementById("content");
-    content.innerHTML = "";
-    ROUTES[view].render(content);
+    content.innerHTML = '<div class="loading-state" style="padding:40px;text-align:center">Cargando...</div>';
+    await ROUTES[view].render(content);
     closeMobileSidebar();
     window.scrollTo({ top: 0, behavior: "instant" in window ? "instant" : "auto" });
   }
@@ -44,12 +45,14 @@
   function initMobileMenu() {
     const toggle = document.getElementById("menuToggle");
     const sidebar = document.getElementById("sidebar");
-    toggle.addEventListener("click", () => sidebar.classList.toggle("open"));
-    document.addEventListener("click", (e) => {
-      if (sidebar.classList.contains("open") && !sidebar.contains(e.target) && e.target !== toggle) {
-        sidebar.classList.remove("open");
-      }
-    });
+    if (toggle && sidebar) {
+      toggle.addEventListener("click", () => sidebar.classList.toggle("open"));
+      document.addEventListener("click", (e) => {
+        if (sidebar.classList.contains("open") && !sidebar.contains(e.target) && e.target !== toggle) {
+          sidebar.classList.remove("open");
+        }
+      });
+    }
   }
 
   function initFechaSidebar() {

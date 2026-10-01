@@ -11,21 +11,26 @@ const Inventario = (function () {
 
   const UNIDADES = ["g", "kg", "ml", "l", "unidad"];
 
-  function render(container) {
-    const items = MilaDB.Inventario.all().slice().sort((a, b) => a.nombre.localeCompare(b.nombre));
-    const categorias = [...new Set(items.map(i => i.categoria).filter(Boolean))];
-    const bajoStock = items.filter(i => Number(i.stockActual) <= Number(i.stockMinimo));
+  async function render(container) {
+    const items = await MilaDB.Inventario.all();
+    const sorted = (items || []).slice().sort((a, b) => a.nombre.localeCompare(b.nombre));
+    const categorias = [...new Set(sorted.map(i => i.categoria).filter(Boolean))];
+    const bajoStock = sorted.filter(i => Number(i.stockActual) <= Number(i.stockMinimo));
 
-    let filtrados = items;
+    let filtrados = sorted;
     if (searchTerm) filtrados = filtrados.filter(i => i.nombre.toLowerCase().includes(searchTerm.toLowerCase()));
     if (filtroCategoria) filtrados = filtrados.filter(i => i.categoria === filtroCategoria);
+
+    const mainContent = tab === "stock"
+      ? renderStockTab(filtrados, categorias)
+      : await renderMovimientosTab();
 
     container.innerHTML = `
       <div class="view-header">
         <div>
           <span class="eyebrow">Obrador</span>
           <h1>Inventario</h1>
-          <p class="subtitle">${items.length} materia${items.length === 1 ? "" : "s"} prima${items.length === 1 ? "" : "s"} registradas</p>
+          <p class="subtitle">${sorted.length} materia${sorted.length === 1 ? "" : "s"} prima${sorted.length === 1 ? "" : "s"} registradas</p>
         </div>
         <div class="view-actions">
           <button class="btn btn-outline" id="btnMovimiento">⇅ Registrar movimiento</button>
@@ -44,7 +49,7 @@ const Inventario = (function () {
         <button class="tab-btn ${tab === "movimientos" ? "active" : ""}" data-tab="movimientos">Historial de movimientos</button>
       </div>
 
-      ${tab === "stock" ? renderStockTab(filtrados, categorias) : renderMovimientosTab(items)}
+      ${mainContent}
     `;
 
     document.getElementById("btnNuevaMp").addEventListener("click", () => abrirFormularioMp());
@@ -54,18 +59,13 @@ const Inventario = (function () {
 
     if (tab === "stock") {
       const buscador = document.getElementById("buscadorMp");
-      if (buscador) buscador.addEventListener("input", (e) => { searchTerm = e.target.value; render(container); refocus("buscadorMp"); });
+      if (buscador) buscador.addEventListener("input", (e) => { searchTerm = e.target.value; render(container); });
       const selCat = document.getElementById("filtroCategoriaMp");
       if (selCat) selCat.addEventListener("change", (e) => { filtroCategoria = e.target.value; render(container); });
 
       container.querySelectorAll("[data-edit]").forEach(btn => btn.addEventListener("click", () => abrirFormularioMp(btn.dataset.edit)));
       container.querySelectorAll("[data-del]").forEach(btn => btn.addEventListener("click", () => eliminar(btn.dataset.del, container)));
     }
-  }
-
-  function refocus(id) {
-    const el = document.getElementById(id);
-    if (el) { el.focus(); el.selectionStart = el.selectionEnd = el.value.length; }
   }
 
   function renderStockTab(items, categorias) {
@@ -119,8 +119,9 @@ const Inventario = (function () {
     `;
   }
 
-  function renderMovimientosTab(items) {
-    const movs = MilaDB.Movimientos.all().slice().sort((a, b) => new Date(b.fecha) - new Date(a.fecha)).slice(0, 100);
+  async function renderMovimientosTab() {
+    const movsList = await MilaDB.Movimientos.all();
+    const movs = (movsList || []).slice().sort((a, b) => new Date(b.fecha) - new Date(a.fecha)).slice(0, 100);
     return `
       <div class="table-wrap">
         ${movs.length === 0 ? `<div class="empty-state"><div class="emoji">📋</div><strong>Sin movimientos todavía</strong><p>Los movimientos aparecen al registrar entradas/salidas o al entregar pedidos.</p></div>` : `
@@ -130,7 +131,7 @@ const Inventario = (function () {
             ${movs.map(m => `
               <tr>
                 <td class="text-muted">${MilaUtils.formatDateTime(m.fecha)}</td>
-                <td><strong>${MilaUtils.escapeHtml(m.materiaPrimaNombre)}</strong></td>
+                <td><strong>${MilaUtils.escapeHtml(m.materiaPrimaNombre || "Insumo")}</strong></td>
                 <td><span class="badge ${m.tipo === "entrada" ? "badge-ok" : "badge-bajo"}">${m.tipo === "entrada" ? "Entrada" : "Salida"}</span></td>
                 <td class="num">${m.tipo === "entrada" ? "+" : "−"}${MilaUtils.num(m.cantidad)} ${MilaUtils.escapeHtml(m.unidad || "")}</td>
                 <td class="text-muted">${MilaUtils.escapeHtml(m.motivo || "—")}</td>
@@ -143,9 +144,14 @@ const Inventario = (function () {
 
   /* ---------- alta / edición de materia prima ---------- */
 
-  function abrirFormularioMp(id) {
+  async function abrirFormularioMp(id) {
     const editando = !!id;
-    const mp = editando ? MilaDB.Inventario.get(id) : null;
+    const [mp, items] = await Promise.all([
+      editando ? MilaDB.Inventario.get(id) : null,
+      MilaDB.Inventario.all()
+    ]);
+
+    const categoriasUnicas = [...new Set((items || []).map(i => i.categoria).filter(Boolean))];
 
     const body = `
       <form id="formMp" novalidate>
@@ -159,7 +165,7 @@ const Inventario = (function () {
             <label>Categoría</label>
             <input type="text" name="categoria" list="listaCategorias" value="${MilaUtils.escapeHtml(mp?.categoria || "")}" placeholder="Secos, Lácteos…">
             <datalist id="listaCategorias">
-              ${[...new Set(MilaDB.Inventario.all().map(i => i.categoria).filter(Boolean))].map(c => `<option value="${MilaUtils.escapeHtml(c)}">`).join("")}
+              ${categoriasUnicas.map(c => `<option value="${MilaUtils.escapeHtml(c)}">`).join("")}
             </datalist>
           </div>
           <div class="form-field" data-field="unidad">
@@ -205,7 +211,7 @@ const Inventario = (function () {
     });
   }
 
-  function guardarMp(form, id) {
+  async function guardarMp(form, id) {
     const data = Object.fromEntries(new FormData(form).entries());
     let valido = true;
     form.querySelectorAll(".form-field").forEach(f => f.classList.remove("has-error"));
@@ -228,40 +234,46 @@ const Inventario = (function () {
     };
 
     if (id) {
-      MilaDB.Inventario.update(id, payload);
+      await MilaDB.Inventario.update(id, payload);
       MilaUtils.toast("Materia prima actualizada", "success");
     } else {
-      MilaDB.Inventario.create(Object.assign({ id: MilaDB.generateId("mp") }, payload));
+      await MilaDB.Inventario.create(Object.assign({ id: MilaDB.generateId("mp") }, payload));
       MilaUtils.toast("Materia prima agregada", "success");
     }
 
     MilaUtils.closeModal();
-    render(document.getElementById("content"));
+    await render(document.getElementById("content"));
   }
 
   function marcarError(form, campo) {
-    form.querySelector(`[data-field="${campo}"]`).classList.add("has-error");
+    const el = form.querySelector(`[data-field="${campo}"]`);
+    if (el) el.classList.add("has-error");
   }
 
-  function eliminar(id, container) {
-    const mp = MilaDB.Inventario.get(id);
+  async function eliminar(id, container) {
+    const [mp, todasRecetas] = await Promise.all([
+      MilaDB.Inventario.get(id),
+      MilaDB.Recetas.all()
+    ]);
+
     if (!mp) return;
-    const usadaEnRecetas = MilaDB.Recetas.all().filter(r => (r.ingredientes || []).some(ing => ing.materiaPrimaId === id));
+    const usadaEnRecetas = (todasRecetas || []).filter(r => (r.ingredientes || []).some(ing => ing.materiaPrimaId === id));
     if (usadaEnRecetas.length > 0) {
       MilaUtils.toast(`No se puede eliminar: se usa en ${usadaEnRecetas.length} receta(s).`, "error");
       return;
     }
     if (!MilaUtils.confirmAction(`¿Eliminar "${mp.nombre}" del inventario?`)) return;
-    MilaDB.Inventario.remove(id);
+    await MilaDB.Inventario.remove(id);
     MilaUtils.toast("Materia prima eliminada", "success");
-    render(container);
+    await render(container);
   }
 
   /* ---------- entradas / salidas manuales ---------- */
 
-  function abrirFormularioMovimiento() {
-    const items = MilaDB.Inventario.all().slice().sort((a, b) => a.nombre.localeCompare(b.nombre));
-    if (items.length === 0) {
+  async function abrirFormularioMovimiento() {
+    const items = await MilaDB.Inventario.all();
+    const sorted = (items || []).slice().sort((a, b) => a.nombre.localeCompare(b.nombre));
+    if (sorted.length === 0) {
       MilaUtils.toast("Primero agregá materias primas al inventario.", "warn");
       return;
     }
@@ -272,7 +284,7 @@ const Inventario = (function () {
           <div class="form-field full" data-field="materiaPrimaId">
             <label>Materia prima *</label>
             <select name="materiaPrimaId">
-              ${items.map(i => `<option value="${i.id}">${MilaUtils.escapeHtml(i.nombre)} (stock: ${MilaUtils.num(i.stockActual)} ${i.unidad})</option>`).join("")}
+              ${sorted.map(i => `<option value="${i.id}">${MilaUtils.escapeHtml(i.nombre)} (stock: ${MilaUtils.num(i.stockActual)} ${i.unidad})</option>`).join("")}
             </select>
           </div>
           <div class="form-field" data-field="tipo">
@@ -307,7 +319,7 @@ const Inventario = (function () {
     });
   }
 
-  function guardarMovimiento(form) {
+  async function guardarMovimiento(form) {
     const data = Object.fromEntries(new FormData(form).entries());
     form.querySelectorAll(".form-field").forEach(f => f.classList.remove("has-error"));
 
@@ -316,7 +328,7 @@ const Inventario = (function () {
       return;
     }
 
-    const mp = MilaDB.Inventario.get(data.materiaPrimaId);
+    const mp = await MilaDB.Inventario.get(data.materiaPrimaId);
     if (!mp) { MilaUtils.toast("La materia prima seleccionada ya no existe.", "error"); return; }
 
     const cantidad = Number(data.cantidad);
@@ -330,9 +342,9 @@ const Inventario = (function () {
       ? Number(mp.stockActual) + cantidad
       : Math.max(0, Number(mp.stockActual) - cantidad);
 
-    MilaDB.Inventario.update(mp.id, { stockActual: nuevoStock, fechaActualizacion: new Date().toISOString() });
+    await MilaDB.Inventario.update(mp.id, { stockActual: nuevoStock, fechaActualizacion: new Date().toISOString() });
 
-    MilaDB.Movimientos.create({
+    await MilaDB.Movimientos.create({
       id: MilaDB.generateId("mov"),
       materiaPrimaId: mp.id,
       materiaPrimaNombre: mp.nombre,
@@ -346,7 +358,7 @@ const Inventario = (function () {
 
     MilaUtils.toast("Movimiento registrado", "success");
     MilaUtils.closeModal();
-    render(document.getElementById("content"));
+    await render(document.getElementById("content"));
   }
 
   return { render, UNIDADES };

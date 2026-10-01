@@ -1,0 +1,83 @@
+Quiero que me ayudes a crear un prompt completo y profesional para desarrollar un sistema web con un ChatBox de IA integrado, orientado a un negocio de pastelería.
+La idea principal es que exista un único ChatBox con IA que pueda cumplir dos funciones principales:
+1. Asistente de recetas de pastelería 🍰
+El usuario podrá consultar al ChatBox sobre recetas y preparación de productos de pastelería.
+Debe poder:
+Buscar y recomendar recetas.
+Explicar recetas paso a paso.
+Indicar ingredientes y cantidades.
+Adaptar cantidades según la cantidad de porciones.
+Calcular proporciones de ingredientes.
+Sugerir sustitutos de ingredientes.
+Dar tiempos y temperaturas de cocción.
+Resolver dudas durante la preparación.
+Recomendar técnicas de pastelería.
+Ayudar a corregir problemas de una preparación.
+Crear recetas a partir de los ingredientes disponibles.
+Permitir consultas como: "Tengo harina, huevos, chocolate y crema, ¿qué puedo hacer?"
+Poder diferenciar entre recetas, producción y consultas del negocio.
+2. Asistente de estadísticas y gestión del negocio 📊
+El mismo ChatBox también debe poder analizar los datos del negocio y generar estadísticas utilizando IA.
+Por ejemplo, el usuario debería poder preguntarle:
+¿Cuánto vendimos este mes?
+¿Cuál fue el producto más vendido?
+¿Qué producto genera mayor ganancia?
+¿Cuánto gastamos en ingredientes?
+¿Cuál fue nuestra facturación?
+¿Cómo fueron las ventas comparadas con el mes anterior?
+¿Qué productos están vendiendo menos?
+¿Qué días tenemos más ventas?
+¿Cuál es el margen de ganancia?
+¿Cuánto deberíamos producir de cada producto?
+¿Qué productos conviene dejar de producir o reducir?
+¿Cuánto necesitamos vender para alcanzar determinado objetivo?
+¿Cuál fue nuestro mejor mes?
+Generar reportes semanales, mensuales y anuales.
+Detectar tendencias y comportamientos en las ventas.
+Mostrar alertas sobre productos con baja rentabilidad o baja rotación.
+La IA debe poder interpretar preguntas escritas en lenguaje natural y consultar los datos correspondientes antes de responder.
+ambién quiero que la IA pueda explicar los resultados, por ejemplo:
+"Las ventas aumentaron un 18% respecto al mes anterior. El producto que más contribuyó al crecimiento fue la torta de chocolate, mientras que las medialunas tuvieron una caída del 12%."
+4. ChatBox inteligente
+El ChatBox debe ser el centro del sistema.
+Quiero que pueda entender el contexto de la conversación. Por ejemplo:
+Usuario:
+"¿Cuánto vendimos de tortas este mes?"
+IA:
+"Vendieron 87 tortas."
+Usuario:
+"¿Y cuánto ganamos con ellas?"
+La IA debería entender que "ellas" hace referencia a las tortas mencionadas anteriormente.
+También debe diferenciar correctamente entre consultas de recetas y consultas administrativas/estadísticas.
+
+IA y seguridad
+Quiero que me expliques cómo debería conectarse la IA con la base de datos de forma segura.
+La IA no debe tener acceso directo e ilimitado a la base de datos.
+Quiero que propongas una arquitectura donde:
+El usuario realiza una pregunta.
+El backend interpreta la consulta.
+Se determina qué información necesita.
+Se consulta la base de datos mediante funciones/API seguras.
+Se devuelve la información necesaria a la IA.
+La IA genera una respuesta comprensible.
+Por ejemplo:
+Usuario:
+"¿Cuál fue el producto más rentable este mes?"
+La IA debería utilizar una función segura como:
+get_product_profitability(period)
+y luego interpretar el resultado.
+
+Experiencia de usuario
+Quiero que el ChatBox tenga una interfaz moderna, profesional y fácil de utilizar.
+Debe incluir:
+Mensajes del usuario y de la IA.
+Indicador de que la IA está procesando.
+Historial de conversaciones.
+Botón para iniciar una nueva conversación.
+Sugerencias de preguntas.
+Posibilidad de consultar estadísticas desde el ChatBox.
+Posibilidad de mostrar gráficos dentro de las respuestas cuando corresponda.
+Diseño responsive para PC, tablet y celular.
+10. Lo que necesito de vos
+No quiero que simplemente me expliques la idea.
+Quiero que me entregues un prompt maestro extremadamente detallado, listo para copiar y pegar en Antigravity para que pueda mejorar este sistema.

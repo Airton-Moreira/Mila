@@ -2,25 +2,25 @@
    MILA · recetas.js
    Fichas técnicas: ingredientes, costos, precio y rentabilidad.
    ========================================================= */
-   document.querySelectorAll(".card-scallop").forEach(c => {
-    c.style.webkitMaskImage = "none";
-});
 
 const Recetas = (function () {
 
   let searchTerm = "";
   let ingredienteRowSeq = 0;
 
-  function render(container) {
-    const recetas = MilaDB.Recetas.all().slice().sort((a, b) => a.nombre.localeCompare(b.nombre));
-    const filtradas = searchTerm ? recetas.filter(r => r.nombre.toLowerCase().includes(searchTerm.toLowerCase())) : recetas;
+  async function render(container) {
+    const recetas = await MilaDB.Recetas.all();
+    const sorted = (recetas || []).slice().sort((a, b) => a.nombre.localeCompare(b.nombre));
+    const filtradas = searchTerm ? sorted.filter(r => r.nombre.toLowerCase().includes(searchTerm.toLowerCase())) : sorted;
+
+    const tarjetasHtml = await Promise.all(filtradas.map(r => tarjetaReceta(r)));
 
     container.innerHTML = `
       <div class="view-header">
         <div>
           <span class="eyebrow">Fichas técnicas</span>
           <h1>Recetas</h1>
-          <p class="subtitle">${recetas.length} producto${recetas.length === 1 ? "" : "s"} en el recetario</p>
+          <p class="subtitle">${sorted.length} producto${sorted.length === 1 ? "" : "s"} en el recetario</p>
         </div>
         <div class="view-actions">
           <button class="btn btn-primary" id="btnNuevaReceta">+ Nueva receta</button>
@@ -38,26 +38,21 @@ const Recetas = (function () {
           <p>Creá la primera ficha técnica para poder calcular costos y armar pedidos.</p>
         </div>` : `
       <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(280px,1fr))">
-        ${filtradas.map(r => tarjetaReceta(r)).join("")}
+        ${tarjetasHtml.join("")}
       </div>`}
     `;
 
     document.getElementById("btnNuevaReceta").addEventListener("click", () => abrirFormulario());
     const buscador = document.getElementById("buscadorRecetas");
-    buscador.addEventListener("input", (e) => { searchTerm = e.target.value; render(container); refocus("buscadorRecetas"); });
+    if (buscador) buscador.addEventListener("input", (e) => { searchTerm = e.target.value; render(container); });
 
     container.querySelectorAll("[data-edit]").forEach(b => b.addEventListener("click", () => abrirFormulario(b.dataset.edit)));
     container.querySelectorAll("[data-del]").forEach(b => b.addEventListener("click", () => eliminar(b.dataset.del, container)));
     container.querySelectorAll("[data-view]").forEach(b => b.addEventListener("click", () => verDetalle(b.dataset.view)));
   }
 
-  function refocus(id) {
-    const el = document.getElementById(id);
-    if (el) { el.focus(); el.selectionStart = el.selectionEnd = el.value.length; }
-  }
-
-  function tarjetaReceta(r) {
-    const calc = MilaDB.calcularCostoReceta(r);
+  async function tarjetaReceta(r) {
+    const calc = await MilaDB.calcularCostoReceta(r);
     const margenClass = calc.margen < 15 ? "warn" : (calc.margen >= 40 ? "good" : "");
     return `
       <div class="card card-scallop">
@@ -80,12 +75,10 @@ const Recetas = (function () {
     `;
   }
 
-  /* ---------- detalle ---------- */
-
-  function verDetalle(id) {
-    const r = MilaDB.Recetas.get(id);
+  async function verDetalle(id) {
+    const r = await MilaDB.Recetas.get(id);
     if (!r) return;
-    const calc = MilaDB.calcularCostoReceta(r);
+    const calc = await MilaDB.calcularCostoReceta(r);
 
     const body = `
       <p class="text-muted">${MilaUtils.escapeHtml(r.descripcion || "")}</p>
@@ -116,21 +109,26 @@ const Recetas = (function () {
     MilaUtils.openModal(r.nombre, body, { wide: true });
   }
 
-  /* ---------- alta / edición ---------- */
-
-  function abrirFormulario(id) {
+  async function abrirFormulario(id) {
     const editando = !!id;
-    const receta = editando ? MilaDB.Recetas.get(id) : null;
-    const inventario = MilaDB.Inventario.all().slice().sort((a, b) => a.nombre.localeCompare(b.nombre));
+    const [receta, inventario, todasRecetas] = await Promise.all([
+      editando ? MilaDB.Recetas.get(id) : null,
+      MilaDB.Inventario.all(),
+      MilaDB.Recetas.all()
+    ]);
 
-    if (inventario.length === 0) {
+    const sortedInventario = (inventario || []).slice().sort((a, b) => a.nombre.localeCompare(b.nombre));
+
+    if (sortedInventario.length === 0) {
       MilaUtils.toast("Primero cargá materias primas en el inventario para poder crear recetas.", "warn");
       return;
     }
 
-    const ingredientesIniciales = editando && receta.ingredientes.length > 0
+    const ingredientesIniciales = editando && receta?.ingredientes?.length > 0
       ? receta.ingredientes
-      : [{ materiaPrimaId: inventario[0].id, cantidad: "", unidad: inventario[0].unidad }];
+      : [{ materiaPrimaId: sortedInventario[0].id, cantidad: "", unidad: sortedInventario[0].unidad }];
+
+    const categoriasUnicas = [...new Set((todasRecetas || []).map(r => r.categoria).filter(Boolean))];
 
     const body = `
       <form id="formReceta" novalidate>
@@ -148,7 +146,7 @@ const Recetas = (function () {
             <label>Categoría</label>
             <input type="text" name="categoria" list="listaCategoriasRec" value="${MilaUtils.escapeHtml(receta?.categoria || "")}" placeholder="Tortas, Galletería…">
             <datalist id="listaCategoriasRec">
-              ${[...new Set(MilaDB.Recetas.all().map(r => r.categoria).filter(Boolean))].map(c => `<option value="${MilaUtils.escapeHtml(c)}">`).join("")}
+              ${categoriasUnicas.map(c => `<option value="${MilaUtils.escapeHtml(c)}">`).join("")}
             </datalist>
           </div>
           <div class="form-field" data-field="rendimiento">
@@ -203,15 +201,15 @@ const Recetas = (function () {
       onMount: () => {
         ingredienteRowSeq = 0;
         const lista = document.getElementById("listaIngredientes");
-        ingredientesIniciales.forEach(ing => lista.appendChild(crearFilaIngrediente(inventario, ing)));
+        ingredientesIniciales.forEach(ing => lista.appendChild(crearFilaIngrediente(sortedInventario, ing)));
 
         document.getElementById("btnAddIngrediente").addEventListener("click", () => {
-          lista.appendChild(crearFilaIngrediente(inventario, null));
+          lista.appendChild(crearFilaIngrediente(sortedInventario, null));
           actualizarPreview();
         });
 
         document.getElementById("btnCancelarReceta").addEventListener("click", MilaUtils.closeModal);
-        document.getElementById("formReceta").addEventListener("submit", (e) => { e.preventDefault(); guardar(e.target, id, inventario); });
+        document.getElementById("formReceta").addEventListener("submit", (e) => { e.preventDefault(); guardar(e.target, id, sortedInventario); });
         document.getElementById("formReceta").addEventListener("input", actualizarPreview);
         actualizarPreview();
       }
@@ -242,7 +240,7 @@ const Recetas = (function () {
     `;
     row.querySelector(".ing-mp").addEventListener("change", (e) => {
       const opt = e.target.selectedOptions[0];
-      row.querySelector(".ing-unidad").value = opt.dataset.unidad || "";
+      row.querySelector(".ing-unidad").value = opt ? (opt.dataset.unidad || "") : "";
       actualizarPreview();
     });
     row.querySelector(".ing-remove").addEventListener("click", () => { row.remove(); actualizarPreview(); });
@@ -255,13 +253,13 @@ const Recetas = (function () {
     filas.forEach(row => {
       const select = row.querySelector(".ing-mp");
       const cantidad = row.querySelector(".ing-cantidad").value;
-      if (select.value && cantidad !== "" && Number(cantidad) > 0) {
+      if (select && select.value && cantidad !== "" && Number(cantidad) > 0) {
         const opt = select.selectedOptions[0];
         ingredientes.push({
           materiaPrimaId: select.value,
-          nombreReferencia: opt.textContent.split(" (")[0],
+          nombreReferencia: opt ? opt.textContent.split(" (")[0] : "Ingrediente",
           cantidad: Number(cantidad),
-          unidad: opt.dataset.unidad
+          unidad: opt ? opt.dataset.unidad : "g"
         });
       }
     });
@@ -278,7 +276,7 @@ const Recetas = (function () {
     document.querySelectorAll("#listaIngredientes .ingredient-row").forEach(row => {
       const select = row.querySelector(".ing-mp");
       const cantidad = Number(row.querySelector(".ing-cantidad").value) || 0;
-      const opt = select.selectedOptions[0];
+      const opt = select ? select.selectedOptions[0] : null;
       const costoUnitario = opt ? Number(opt.dataset.costo) : 0;
       costoTotal += cantidad * costoUnitario;
     });
@@ -288,15 +286,19 @@ const Recetas = (function () {
     const utilidad = precioVenta - costoPorUnidad;
     const margen = precioVenta > 0 ? (utilidad / precioVenta) * 100 : 0;
 
-    document.getElementById("previewCosto").value = MilaUtils.money(costoPorUnidad);
-    document.getElementById("previewUtilidad").value = MilaUtils.money(utilidad);
-    document.getElementById("previewMargen").value = MilaUtils.pct(margen);
+    const cEl = document.getElementById("previewCosto");
+    const uEl = document.getElementById("previewUtilidad");
+    const mEl = document.getElementById("previewMargen");
+    if (cEl) cEl.value = MilaUtils.money(costoPorUnidad);
+    if (uEl) uEl.value = MilaUtils.money(utilidad);
+    if (mEl) mEl.value = MilaUtils.pct(margen);
   }
 
-  function guardar(form, id, inventario) {
+  async function guardar(form, id, inventario) {
     const data = Object.fromEntries(new FormData(form).entries());
     form.querySelectorAll(".form-field").forEach(f => f.classList.remove("has-error"));
-    document.getElementById("errorIngredientes").style.display = "none";
+    const errIng = document.getElementById("errorIngredientes");
+    if (errIng) errIng.style.display = "none";
 
     let valido = true;
     if (!MilaUtils.isRequired(data.nombre)) { marcarError(form, "nombre"); valido = false; }
@@ -306,7 +308,7 @@ const Recetas = (function () {
 
     const ingredientes = leerIngredientesForm();
     if (ingredientes.length === 0) {
-      document.getElementById("errorIngredientes").style.display = "block";
+      if (errIng) errIng.style.display = "block";
       valido = false;
     }
 
@@ -324,33 +326,35 @@ const Recetas = (function () {
     };
 
     if (id) {
-      MilaDB.Recetas.update(id, payload);
+      await MilaDB.Recetas.update(id, payload);
       MilaUtils.toast("Receta actualizada", "success");
     } else {
-      MilaDB.Recetas.create(Object.assign({ id: MilaDB.generateId("rec") }, payload));
+      await MilaDB.Recetas.create(Object.assign({ id: MilaDB.generateId("rec") }, payload));
       MilaUtils.toast("Receta creada", "success");
     }
 
     MilaUtils.closeModal();
-    render(document.getElementById("content"));
+    await render(document.getElementById("content"));
   }
 
   function marcarError(form, campo) {
-    form.querySelector(`[data-field="${campo}"]`).classList.add("has-error");
+    const el = form.querySelector(`[data-field="${campo}"]`);
+    if (el) el.classList.add("has-error");
   }
 
-  function eliminar(id, container) {
-    const receta = MilaDB.Recetas.get(id);
+  async function eliminar(id, container) {
+    const receta = await MilaDB.Recetas.get(id);
     if (!receta) return;
-    const pedidosAsociados = MilaDB.Pedidos.all().filter(p => p.recetaId === id);
+    const todosPedidos = await MilaDB.Pedidos.all();
+    const pedidosAsociados = (todosPedidos || []).filter(p => p.recetaId === id);
     if (pedidosAsociados.length > 0) {
       MilaUtils.toast(`No se puede eliminar: hay ${pedidosAsociados.length} pedido(s) que usan esta receta.`, "error");
       return;
     }
     if (!MilaUtils.confirmAction(`¿Eliminar la receta "${receta.nombre}"?`)) return;
-    MilaDB.Recetas.remove(id);
+    await MilaDB.Recetas.remove(id);
     MilaUtils.toast("Receta eliminada", "success");
-    render(container);
+    await render(container);
   }
 
   return { render };

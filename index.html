@@ -48,10 +48,14 @@
       <a href="#reportes" data-view="reportes" class="nav-link">
         <span class="nav-ico">▲</span> Reportes
       </a>
+      <a href="#asistente" data-view="asistente" class="nav-link">
+        <span class="nav-ico">🤖</span> Asistente
+      </a>
     </nav>
 
     <div class="sidebar-foot">
       <p>Horno encendido desde<br><strong id="fecha-hoy-side"></strong></p>
+      <button class="btn btn-outline btn-sm" id="btnMigrarNube" style="margin-top:10px;width:100%;font-size:11px">☁ Migrar a la nube</button>
     </div>
   </aside>
 
@@ -84,7 +88,10 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.6/dist/purify.min.js"></script>
 <script src="js/supabase.js"></script>
+<script src="js/importer.js"></script>
 
 <script src="js/storage.js"></script>
 <script src="js/utils.js"></script>
@@ -93,8 +100,14 @@
 <script src="js/recetas.js"></script>
 <script src="js/pedidos.js"></script>
 <script src="js/reportes.js"></script>
+<script src="js/asistente.js"></script>
 <script src="js/dashboard.js"></script>
 
 <script src="js/app.js"></script>
+<script>
+  document.getElementById("btnMigrarNube")?.addEventListener("click", () => {
+    MilaImporter.migrarALaNube();
+  });
+</script>
 </body>
 </html>

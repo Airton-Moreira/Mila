@@ -7,14 +7,18 @@ const Clientes = (function () {
 
   let searchTerm = "";
 
-  function render(container) {
-    const clientes = MilaDB.Clientes.all()
-      .slice()
-      .sort((a, b) => (a.nombre + a.apellido).localeCompare(b.nombre + b.apellido));
+  async function render(container) {
+    const [clientesList, pedidosList] = await Promise.all([
+      MilaDB.Clientes.all(),
+      MilaDB.Pedidos.all()
+    ]);
+
+    const clientes = (clientesList || []).slice().sort((a, b) => ((a.nombre || "") + (a.apellido || "")).localeCompare((b.nombre || "") + (b.apellido || "")));
+    const pedidos = pedidosList || [];
 
     const filtrados = searchTerm
       ? clientes.filter(c => {
-          const blob = `${c.nombre} ${c.apellido} ${c.telefono} ${c.email}`.toLowerCase();
+          const blob = `${c.nombre} ${c.apellido || ""} ${c.telefono || ""} ${c.email || ""}`.toLowerCase();
           return blob.includes(searchTerm.toLowerCase());
         })
       : clientes;
@@ -36,20 +40,18 @@ const Clientes = (function () {
       </div>
 
       <div class="table-wrap">
-        ${filtrados.length === 0 ? emptyState() : tabla(filtrados)}
+        ${filtrados.length === 0 ? emptyState() : tabla(filtrados, pedidos)}
       </div>
     `;
 
     document.getElementById("btnNuevoCliente").addEventListener("click", () => abrirFormulario());
     const buscador = document.getElementById("buscadorClientes");
-    buscador.addEventListener("input", (e) => {
-      searchTerm = e.target.value;
-      render(container);
-      // devolver el foco tras el re-render
-      const b2 = document.getElementById("buscadorClientes");
-      b2.focus();
-      b2.selectionStart = b2.selectionEnd = b2.value.length;
-    });
+    if (buscador) {
+      buscador.addEventListener("input", (e) => {
+        searchTerm = e.target.value;
+        render(container);
+      });
+    }
 
     container.querySelectorAll("[data-edit]").forEach(btn =>
       btn.addEventListener("click", () => abrirFormulario(btn.dataset.edit)));
@@ -68,7 +70,7 @@ const Clientes = (function () {
       </div>`;
   }
 
-  function tabla(clientes) {
+  function tabla(clientes, pedidos) {
     return `
       <table>
         <thead>
@@ -83,7 +85,7 @@ const Clientes = (function () {
         </thead>
         <tbody>
           ${clientes.map(c => {
-            const pedidosCliente = MilaDB.Pedidos.all().filter(p => p.clienteId === c.id);
+            const pedidosCliente = pedidos.filter(p => p.clienteId === c.id);
             return `
             <tr>
               <td>
@@ -108,9 +110,9 @@ const Clientes = (function () {
     `;
   }
 
-  function abrirFormulario(id) {
+  async function abrirFormulario(id) {
     const editando = !!id;
-    const cliente = editando ? MilaDB.Clientes.get(id) : null;
+    const cliente = editando ? await MilaDB.Clientes.get(id) : null;
 
     const body = `
       <form id="formCliente" novalidate>
@@ -159,7 +161,7 @@ const Clientes = (function () {
     });
   }
 
-  function guardar(form, id) {
+  async function guardar(form, id) {
     const data = Object.fromEntries(new FormData(form).entries());
     let valido = true;
 
@@ -170,14 +172,14 @@ const Clientes = (function () {
       valido = false;
     }
     if (data.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)) {
-      form.querySelector('[data-field="email"]').classList.add("has-error");
-      form.querySelector('[data-field="email"] .field-error') || (form.querySelector('[data-field="email"]').innerHTML += '<span class="field-error" style="display:block">Email inválido.</span>');
+      const emailField = form.querySelector('[data-field="email"]');
+      if (emailField) emailField.classList.add("has-error");
       valido = false;
     }
     if (!valido) return;
 
     if (id) {
-      MilaDB.Clientes.update(id, {
+      await MilaDB.Clientes.update(id, {
         nombre: data.nombre.trim(),
         apellido: (data.apellido || "").trim(),
         telefono: (data.telefono || "").trim(),
@@ -187,7 +189,7 @@ const Clientes = (function () {
       });
       MilaUtils.toast("Cliente actualizado", "success");
     } else {
-      MilaDB.Clientes.create({
+      await MilaDB.Clientes.create({
         id: MilaDB.generateId("cli"),
         nombre: data.nombre.trim(),
         apellido: (data.apellido || "").trim(),
@@ -201,27 +203,37 @@ const Clientes = (function () {
     }
 
     MilaUtils.closeModal();
-    render(document.getElementById("content"));
+    await render(document.getElementById("content"));
   }
 
-  function eliminar(id, container) {
-    const cliente = MilaDB.Clientes.get(id);
+  async function eliminar(id, container) {
+    const [cliente, todosPedidos] = await Promise.all([
+      MilaDB.Clientes.get(id),
+      MilaDB.Pedidos.all()
+    ]);
+
     if (!cliente) return;
-    const pedidosAsociados = MilaDB.Pedidos.all().filter(p => p.clienteId === id);
+    const pedidosAsociados = (todosPedidos || []).filter(p => p.clienteId === id);
     const msg = pedidosAsociados.length
       ? `${cliente.nombre} tiene ${pedidosAsociados.length} pedido(s) asociado(s). Los pedidos quedarán con la referencia al cliente eliminada. ¿Eliminar de todas formas?`
       : `¿Eliminar a ${cliente.nombre} ${cliente.apellido || ""}? Esta acción no se puede deshacer.`;
     if (!MilaUtils.confirmAction(msg)) return;
 
-    MilaDB.Clientes.remove(id);
+    await MilaDB.Clientes.remove(id);
     MilaUtils.toast("Cliente eliminado", "success");
-    render(container);
+    await render(container);
   }
 
-  function verDetalle(id) {
-    const cliente = MilaDB.Clientes.get(id);
+  async function verDetalle(id) {
+    const [cliente, todosPedidos, recetas] = await Promise.all([
+      MilaDB.Clientes.get(id),
+      MilaDB.Pedidos.all(),
+      MilaDB.Recetas.all()
+    ]);
+
     if (!cliente) return;
-    const pedidos = MilaDB.Pedidos.all()
+    const recetasMap = new Map((recetas || []).map(r => [r.id, r.nombre]));
+    const pedidos = (todosPedidos || [])
       .filter(p => p.clienteId === id)
       .sort((a, b) => new Date(b.fechaEntrega) - new Date(a.fechaEntrega));
 
@@ -241,7 +253,7 @@ const Clientes = (function () {
             <tbody>
               ${pedidos.map(p => `
                 <tr>
-                  <td>${MilaUtils.escapeHtml(MilaDB.nombreReceta(p.recetaId))} × ${p.cantidad}</td>
+                  <td>${MilaUtils.escapeHtml(recetasMap.get(p.recetaId) || "Producto eliminado")} × ${p.cantidad}</td>
                   <td>${MilaUtils.formatDate(p.fechaEntrega)}</td>
                   <td><span class="badge ${MilaUtils.estadoBadgeClass(p.estado)}">${p.estado}</span></td>
                   <td class="text-right num">${MilaUtils.money(p.total)}</td>

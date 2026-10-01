@@ -10,11 +10,24 @@ const Reportes = (function () {
   let hastaCustom = "";
   let chartInstance = null;
 
-  function render(container) {
+  async function render(container) {
     const rango = calcularRango();
-    const pedidos = MilaDB.Pedidos.all().filter(p => dentroDeRango(p, rango));
+    const [pedidosList, clientesList, recetasList] = await Promise.all([
+      MilaDB.Pedidos.all(),
+      MilaDB.Clientes.all(),
+      MilaDB.Recetas.all()
+    ]);
+
+    const clientesMap = new Map((clientesList || []).map(c => [c.id, `${c.nombre} ${c.apellido || ""}`.trim()]));
+    const recetasMap = new Map((recetasList || []).map(r => [r.id, r.nombre]));
+
+    const nombreCliente = id => clientesMap.get(id) || "Cliente eliminado";
+    const nombreReceta = id => recetasMap.get(id) || "Producto eliminado";
+
+    const todosPedidos = pedidosList || [];
+    const pedidos = todosPedidos.filter(p => dentroDeRango(p, rango));
     const entregados = pedidos.filter(p => p.estado === "Entregado");
-    const pendientesActivos = MilaDB.Pedidos.all().filter(p => p.estado !== "Entregado" && p.estado !== "Cancelado");
+    const pendientesActivos = todosPedidos.filter(p => p.estado !== "Entregado" && p.estado !== "Cancelado");
 
     const ventasTotales = entregados.reduce((s, p) => s + Number(p.total), 0);
     const costosTotales = entregados.reduce((s, p) => s + Number(p.costoProduccion), 0);
@@ -24,7 +37,7 @@ const Reportes = (function () {
 
     const porProducto = {};
     entregados.forEach(p => {
-      const nombre = MilaDB.nombreReceta(p.recetaId);
+      const nombre = nombreReceta(p.recetaId);
       porProducto[nombre] = (porProducto[nombre] || 0) + Number(p.cantidad);
     });
     const rankingProductos = Object.entries(porProducto).sort((a, b) => b[1] - a[1]);
@@ -117,8 +130,8 @@ const Reportes = (function () {
             ${entregados.sort((a, b) => new Date(b.fechaEntrega) - new Date(a.fechaEntrega)).map(p => `
               <tr>
                 <td>${MilaUtils.formatDate(p.fechaEntrega)}</td>
-                <td>${MilaUtils.escapeHtml(MilaDB.nombreCliente(p.clienteId))}</td>
-                <td>${MilaUtils.escapeHtml(MilaDB.nombreReceta(p.recetaId))} × ${p.cantidad}</td>
+                <td>${MilaUtils.escapeHtml(nombreCliente(p.clienteId))}</td>
+                <td>${MilaUtils.escapeHtml(nombreReceta(p.recetaId))} × ${p.cantidad}</td>
                 <td class="text-right num">${MilaUtils.money(p.total)}</td>
                 <td class="text-right num text-muted">${MilaUtils.money(p.costoProduccion)}</td>
                 <td class="text-right num">${MilaUtils.money(p.utilidad)}</td>
@@ -208,7 +221,7 @@ const Reportes = (function () {
       return { desde: ymd(hoy), hasta: ymd(hoy) };
     }
     if (periodo === "semana") {
-      const diaSemana = hoy.getDay(); // 0=domingo
+      const diaSemana = hoy.getDay();
       const desde = new Date(hoy); desde.setDate(hoy.getDate() - diaSemana);
       return { desde: ymd(desde), hasta: ymd(hoy) };
     }
@@ -216,7 +229,6 @@ const Reportes = (function () {
       const desde = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
       return { desde: ymd(desde), hasta: ymd(hoy) };
     }
-    // personalizado
     return { desde: desdeCustom || "0000-01-01", hasta: hastaCustom || "9999-12-31" };
   }
 
