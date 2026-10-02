@@ -6,6 +6,8 @@
 
 const MilaDB = (function () {
 
+  const DIAS_RETENCION_PAPELERA = 30;
+
   const KEYS = {
     CLIENTES:     "mila_clientes",
     PEDIDOS:      "mila_pedidos",
@@ -234,11 +236,10 @@ const MilaDB = (function () {
         };
         const tableName = tableMap[entity];
         if (tableName) {
-          const { error } = await window.supabaseClient
+          await window.supabaseClient
             .from(tableName)
             .delete()
             .eq("id", id);
-          if (!error) return true;
         }
       } catch (err) {
         console.warn(`Supabase delete failed for ${entity}, using LocalStorage`, err);
@@ -253,11 +254,63 @@ const MilaDB = (function () {
 
   /* ---------- Interfaces de Entidad ---------- */
 
+  async function limpiarPapeleraExpirada(entity, dias = DIAS_RETENCION_PAPELERA) {
+    const todos = await getAll(entity);
+    const ahora = Date.now();
+    const limiteMs = dias * 24 * 60 * 60 * 1000;
+    const expirados = todos.filter(item => {
+      if (!item.eliminadoEn) return false;
+      const fechaElim = new Date(item.eliminadoEn).getTime();
+      return !isNaN(fechaElim) && (ahora - fechaElim) > limiteMs;
+    });
+    for (const exp of expirados) {
+      await remove(entity, exp.id);
+    }
+  }
+
   const Clientes = {
-    all: () => getAll("clientes"),
+    all: async () => {
+      const list = await getAll("clientes");
+      return list.filter(c => !c.eliminadoEn);
+    },
+    papelera: async () => {
+      await limpiarPapeleraExpirada("clientes");
+      const list = await getAll("clientes");
+      return list.filter(c => !!c.eliminadoEn);
+    },
     get: id => getById("clientes", id),
     create: data => insert("clientes", data),
     update: (id, patch) => update("clientes", id, patch),
+    mandarAPapelera: async id => {
+      return await update("clientes", id, { eliminadoEn: new Date().toISOString() });
+    },
+    restaurar: async id => {
+      if (isSupabaseAvailable()) {
+        try {
+          await window.supabaseClient.from("clientes").update({ eliminado_en: null }).eq("id", id);
+        } catch (e) {
+          console.warn("Supabase restaurar cliente falló, usando LocalStorage", e);
+        }
+      }
+      const arr = _localGet(KEYS.CLIENTES);
+      const idx = arr.findIndex(item => item.id === id);
+      if (idx !== -1) {
+        delete arr[idx].eliminadoEn;
+        _localSet(KEYS.CLIENTES, arr);
+        return arr[idx];
+      }
+      return null;
+    },
+    vaciarPapelera: async () => {
+      const enPapelera = await Clientes.papelera();
+      for (const c of enPapelera) {
+        await remove("clientes", c.id);
+      }
+      const arr = _localGet(KEYS.CLIENTES);
+      const restantes = arr.filter(c => !c.eliminadoEn);
+      _localSet(KEYS.CLIENTES, restantes);
+      return enPapelera.length;
+    },
     remove: id => remove("clientes", id)
   };
 
@@ -270,18 +323,94 @@ const MilaDB = (function () {
   };
 
   const Recetas = {
-    all: () => getAll("recetas"),
+    all: async () => {
+      const list = await getAll("recetas");
+      return list.filter(r => !r.eliminadoEn);
+    },
+    papelera: async () => {
+      await limpiarPapeleraExpirada("recetas");
+      const list = await getAll("recetas");
+      return list.filter(r => !!r.eliminadoEn);
+    },
     get: id => getById("recetas", id),
     create: data => insert("recetas", data),
     update: (id, patch) => update("recetas", id, patch),
+    mandarAPapelera: async id => {
+      return await update("recetas", id, { eliminadoEn: new Date().toISOString() });
+    },
+    restaurar: async id => {
+      if (isSupabaseAvailable()) {
+        try {
+          await window.supabaseClient.from("recetas").update({ eliminado_en: null }).eq("id", id);
+        } catch (e) {
+          console.warn("Supabase restaurar receta falló, usando LocalStorage", e);
+        }
+      }
+      const arr = _localGet(KEYS.RECETAS);
+      const idx = arr.findIndex(item => item.id === id);
+      if (idx !== -1) {
+        delete arr[idx].eliminadoEn;
+        _localSet(KEYS.RECETAS, arr);
+        return arr[idx];
+      }
+      return null;
+    },
+    vaciarPapelera: async () => {
+      const enPapelera = await Recetas.papelera();
+      for (const r of enPapelera) {
+        await remove("recetas", r.id);
+      }
+      const arr = _localGet(KEYS.RECETAS);
+      const restantes = arr.filter(r => !r.eliminadoEn);
+      _localSet(KEYS.RECETAS, restantes);
+      return enPapelera.length;
+    },
     remove: id => remove("recetas", id)
   };
 
   const Pedidos = {
-    all: () => getAll("pedidos"),
+    all: async () => {
+      const list = await getAll("pedidos");
+      return list.filter(p => !p.eliminadoEn);
+    },
+    papelera: async () => {
+      await limpiarPapeleraExpirada("pedidos");
+      const list = await getAll("pedidos");
+      return list.filter(p => !!p.eliminadoEn);
+    },
     get: id => getById("pedidos", id),
     create: data => insert("pedidos", data),
     update: (id, patch) => update("pedidos", id, patch),
+    mandarAPapelera: async id => {
+      return await update("pedidos", id, { eliminadoEn: new Date().toISOString() });
+    },
+    restaurar: async id => {
+      if (isSupabaseAvailable()) {
+        try {
+          await window.supabaseClient.from("pedidos").update({ eliminado_en: null }).eq("id", id);
+        } catch (e) {
+          console.warn("Supabase restaurar pedido falló, usando LocalStorage", e);
+        }
+      }
+      const arr = _localGet(KEYS.PEDIDOS);
+      const idx = arr.findIndex(item => item.id === id);
+      if (idx !== -1) {
+        delete arr[idx].eliminadoEn;
+        _localSet(KEYS.PEDIDOS, arr);
+        return arr[idx];
+      }
+      return null;
+    },
+    vaciarPapelera: async () => {
+      const enPapelera = await Pedidos.papelera();
+      for (const p of enPapelera) {
+        await remove("pedidos", p.id);
+      }
+      const arr = _localGet(KEYS.PEDIDOS);
+      const restantes = arr.filter(p => !p.eliminadoEn);
+      _localSet(KEYS.PEDIDOS, restantes);
+      return enPapelera.length;
+    },
     remove: id => remove("pedidos", id)
   };
 
@@ -475,6 +604,7 @@ const MilaDB = (function () {
 
   return {
     KEYS,
+    DIAS_RETENCION_PAPELERA,
     generateId,
     getAll, getById, insert, update, remove,
     Clientes, Inventario, Recetas, Pedidos, Movimientos,

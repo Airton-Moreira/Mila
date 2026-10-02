@@ -6,14 +6,17 @@
 const Clientes = (function () {
 
   let searchTerm = "";
+  let vista = "lista"; // "lista" | "papelera"
 
   async function render(container) {
-    const [clientesList, pedidosList] = await Promise.all([
+    const [clientesList, clientesPapeleraList, pedidosList] = await Promise.all([
       MilaDB.Clientes.all(),
+      MilaDB.Clientes.papelera(),
       MilaDB.Pedidos.all()
     ]);
 
     const clientes = (clientesList || []).slice().sort((a, b) => ((a.nombre || "") + (a.apellido || "")).localeCompare((b.nombre || "") + (b.apellido || "")));
+    const clientesPapelera = (clientesPapeleraList || []).slice().sort((a, b) => new Date(b.eliminadoEn || 0) - new Date(a.eliminadoEn || 0));
     const pedidos = pedidosList || [];
 
     const filtrados = searchTerm
@@ -23,42 +26,74 @@ const Clientes = (function () {
         })
       : clientes;
 
+    const cantPapelera = clientesPapelera.length;
+    const subtitulo = vista === "papelera"
+      ? `${cantPapelera} cliente${cantPapelera === 1 ? "" : "s"} en la papelera`
+      : `${clientes.length} cliente${clientes.length === 1 ? "" : "s"} registrado${clientes.length === 1 ? "" : "s"}`;
+
     container.innerHTML = `
       <div class="view-header">
         <div>
           <span class="eyebrow">Agenda</span>
           <h1>Clientes</h1>
-          <p class="subtitle">${clientes.length} cliente${clientes.length === 1 ? "" : "s"} registrado${clientes.length === 1 ? "" : "s"}</p>
+          <p class="subtitle">${subtitulo}</p>
         </div>
         <div class="view-actions">
+          ${vista === "papelera" && cantPapelera > 0 ? `<button class="btn btn-danger" id="btnVaciarPapelera">Vaciar papelera</button>` : ""}
           <button class="btn btn-primary" id="btnNuevoCliente">+ Nuevo cliente</button>
         </div>
       </div>
 
-      <div class="search-bar">
-        <input type="search" id="buscadorClientes" placeholder="Buscar por nombre, teléfono o email…" value="${MilaUtils.escapeHtml(searchTerm)}">
+      <div class="tabs">
+        <button class="tab-btn ${vista === "lista" ? "active" : ""}" data-tab="lista">Todos los clientes</button>
+        <button class="tab-btn ${vista === "papelera" ? "active" : ""}" data-tab="papelera">Papelera (${cantPapelera})</button>
       </div>
 
-      <div class="table-wrap">
-        ${filtrados.length === 0 ? emptyState() : tabla(filtrados, pedidos)}
-      </div>
+      ${vista === "lista" ? `
+        <div class="search-bar">
+          <input type="search" id="buscadorClientes" placeholder="Buscar por nombre, teléfono o email…" value="${MilaUtils.escapeHtml(searchTerm)}">
+        </div>
+        <div class="table-wrap">
+          ${filtrados.length === 0 ? emptyState() : tabla(filtrados, pedidos)}
+        </div>
+      ` : tablaPapelera(clientesPapelera, pedidos)}
     `;
 
-    document.getElementById("btnNuevoCliente").addEventListener("click", () => abrirFormulario());
-    const buscador = document.getElementById("buscadorClientes");
-    if (buscador) {
-      buscador.addEventListener("input", (e) => {
-        searchTerm = e.target.value;
-        render(container);
-      });
-    }
+    document.getElementById("btnNuevoCliente")?.addEventListener("click", () => abrirFormulario());
+    container.querySelectorAll(".tab-btn").forEach(b => b.addEventListener("click", () => { vista = b.dataset.tab; render(container); }));
 
-    container.querySelectorAll("[data-edit]").forEach(btn =>
-      btn.addEventListener("click", () => abrirFormulario(btn.dataset.edit)));
-    container.querySelectorAll("[data-del]").forEach(btn =>
-      btn.addEventListener("click", () => eliminar(btn.dataset.del, container)));
-    container.querySelectorAll("[data-view-cliente]").forEach(btn =>
-      btn.addEventListener("click", () => verDetalle(btn.dataset.viewCliente)));
+    if (vista === "lista") {
+      const buscador = document.getElementById("buscadorClientes");
+      if (buscador) {
+        buscador.addEventListener("input", (e) => {
+          searchTerm = e.target.value;
+          render(container);
+        });
+      }
+
+      container.querySelectorAll("[data-edit]").forEach(btn =>
+        btn.addEventListener("click", () => abrirFormulario(btn.dataset.edit)));
+      container.querySelectorAll("[data-del]").forEach(btn =>
+        btn.addEventListener("click", () => eliminar(btn.dataset.del, container)));
+      container.querySelectorAll("[data-view-cliente]").forEach(btn =>
+        btn.addEventListener("click", () => verDetalle(btn.dataset.viewCliente)));
+    } else {
+      const btnVaciar = document.getElementById("btnVaciarPapelera");
+      if (btnVaciar) btnVaciar.addEventListener("click", () => vaciarPapelera(container));
+
+      container.querySelectorAll("[data-restore]").forEach(btn =>
+        btn.addEventListener("click", () => {
+          const id = btn.dataset.restore || btn.getAttribute("data-restore");
+          restaurarCliente(id, container);
+        }));
+      container.querySelectorAll("[data-del-permanent]").forEach(btn =>
+        btn.addEventListener("click", () => {
+          const id = btn.dataset.delPermanent || btn.getAttribute("data-del-permanent");
+          eliminarDefinitivo(id, container);
+        }));
+      container.querySelectorAll("[data-view-cliente]").forEach(btn =>
+        btn.addEventListener("click", () => verDetalle(btn.dataset.viewCliente)));
+    }
   }
 
   function emptyState() {
@@ -107,6 +142,57 @@ const Clientes = (function () {
           }).join("")}
         </tbody>
       </table>
+    `;
+  }
+
+  function tablaPapelera(clientes, pedidos) {
+    if (clientes.length === 0) {
+      return `
+        <div class="empty-state">
+          <div class="emoji">🗑️</div>
+          <strong>La papelera de clientes está vacía</strong>
+          <p>Los clientes que elimines aparecerán acá para que puedas restaurarlos cuando quieras.</p>
+        </div>
+      `;
+    }
+
+    return `
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Cliente</th>
+              <th>Teléfono</th>
+              <th>Email</th>
+              <th>Pedidos</th>
+              <th>Eliminado el</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            ${clientes.map(c => {
+              const pedidosCliente = pedidos.filter(p => p.clienteId === c.id);
+              return `
+              <tr>
+                <td>
+                  <strong style="cursor:pointer" data-view-cliente="${c.id}">${MilaUtils.escapeHtml(c.nombre)} ${MilaUtils.escapeHtml(c.apellido || "")}</strong>
+                  ${c.direccion ? `<div class="text-muted" style="font-size:12px">${MilaUtils.escapeHtml(c.direccion)}</div>` : ""}
+                </td>
+                <td class="num">${MilaUtils.escapeHtml(c.telefono || "—")}</td>
+                <td>${MilaUtils.escapeHtml(c.email || "—")}</td>
+                <td><span class="tag-pill">${pedidosCliente.length} pedido${pedidosCliente.length === 1 ? "" : "s"}</span></td>
+                <td class="text-muted">${MilaUtils.formatDateTime(c.eliminadoEn)}</td>
+                <td>
+                  <div class="row-actions">
+                    <button class="btn btn-outline btn-sm" data-restore="${c.id}">Restaurar</button>
+                    <button class="btn btn-danger btn-sm" data-del-permanent="${c.id}">Eliminar definitivamente</button>
+                  </div>
+                </td>
+              </tr>`;
+            }).join("")}
+          </tbody>
+        </table>
+      </div>
     `;
   }
 
@@ -215,12 +301,36 @@ const Clientes = (function () {
     if (!cliente) return;
     const pedidosAsociados = (todosPedidos || []).filter(p => p.clienteId === id);
     const msg = pedidosAsociados.length
-      ? `${cliente.nombre} tiene ${pedidosAsociados.length} pedido(s) asociado(s). Los pedidos quedarán con la referencia al cliente eliminada. ¿Eliminar de todas formas?`
-      : `¿Eliminar a ${cliente.nombre} ${cliente.apellido || ""}? Esta acción no se puede deshacer.`;
+      ? `${cliente.nombre} tiene ${pedidosAsociados.length} pedido(s) activo(s) asociado(s). ¿Mover a la papelera de todas formas?`
+      : `¿Mover a ${cliente.nombre} ${cliente.apellido || ""} a la papelera?`;
     if (!MilaUtils.confirmAction(msg)) return;
 
+    await MilaDB.Clientes.mandarAPapelera(id);
+    MilaUtils.toast("Cliente movido a la papelera", "success");
+    await render(container);
+  }
+
+  async function restaurarCliente(id, container) {
+    await MilaDB.Clientes.restaurar(id);
+    MilaUtils.toast("Cliente restaurado", "success");
+    await render(container);
+  }
+
+  async function eliminarDefinitivo(id, container) {
+    const seguro = MilaUtils.confirmAction("¿Eliminar este cliente definitivamente? Esta acción no se puede deshacer.");
+    if (!seguro) return;
     await MilaDB.Clientes.remove(id);
-    MilaUtils.toast("Cliente eliminado", "success");
+    MilaUtils.toast("Cliente eliminado definitivamente", "success");
+    await render(container);
+  }
+
+  async function vaciarPapelera(container) {
+    const enPapelera = await MilaDB.Clientes.papelera();
+    if (enPapelera.length === 0) return;
+    const seguro = MilaUtils.confirmAction(`¿Eliminar definitivamente los ${enPapelera.length} cliente${enPapelera.length === 1 ? "" : "s"} de la papelera? Esta acción no se puede deshacer.`);
+    if (!seguro) return;
+    await MilaDB.Clientes.vaciarPapelera();
+    MilaUtils.toast(`Se eliminaron definitivamente ${enPapelera.length} cliente${enPapelera.length === 1 ? "" : "s"}`, "success");
     await render(container);
   }
 

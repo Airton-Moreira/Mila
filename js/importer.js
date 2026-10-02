@@ -11,42 +11,49 @@ const MilaImporter = (function () {
       return { ok: false, error: "No Supabase Client" };
     }
 
-    const { data: { session }, error: sessionErr } = await window.supabaseClient.auth.getSession();
-    if (sessionErr || !session) {
-      alert("Debés iniciar sesión para migrar tus datos a la nube.");
-      return { ok: false, error: "No Auth Session" };
+    // Permitir migración sin requerir sesión obligatoria
+    const { data: sessionData } = await window.supabaseClient.auth.getSession().catch(() => ({ data: {} }));
+    const user = sessionData?.session?.user || null;
+
+    let negocioId = null;
+
+    if (user) {
+      let { data: miembros } = await window.supabaseClient
+        .from("miembros")
+        .select("negocio_id")
+        .eq("user_id", user.id)
+        .limit(1);
+
+      negocioId = miembros && miembros.length > 0 ? miembros[0].negocio_id : null;
     }
 
-    const user = session.user;
-
-    // 1. Obtener o crear negocio para el usuario
-    let { data: miembros, error: miemErr } = await window.supabaseClient
-      .from("miembros")
-      .select("negocio_id")
-      .eq("user_id", user.id)
-      .limit(1);
-
-    let negocioId = miembros && miembros.length > 0 ? miembros[0].negocio_id : null;
-
     if (!negocioId) {
-      // Crear negocio por defecto
-      const { data: neg, error: negErr } = await window.supabaseClient
+      // Buscar o crear negocio predeterminado
+      const { data: negs } = await window.supabaseClient
         .from("negocios")
-        .insert({ nombre: "Mila · Obrador Artesanal", tipo_negocio: "reposteria" })
-        .select()
-        .single();
+        .select("id")
+        .limit(1);
 
-      if (negErr || !neg) {
-        alert("Error al crear el registro del negocio en Supabase.");
-        return { ok: false, error: negErr };
+      if (negs && negs.length > 0) {
+        negocioId = negs[0].id;
+      } else {
+        const { data: neg, error: negErr } = await window.supabaseClient
+          .from("negocios")
+          .insert({ nombre: "Mila · Obrador Artesanal", tipo_negocio: "reposteria" })
+          .select()
+          .single();
+
+        if (neg && !negErr) {
+          negocioId = neg.id;
+          if (user) {
+            await window.supabaseClient.from("miembros").insert({
+              user_id: user.id,
+              negocio_id: negocioId,
+              rol: "owner"
+            });
+          }
+        }
       }
-
-      negocioId = neg.id;
-      await window.supabaseClient.from("miembros").insert({
-        user_id: user.id,
-        negocio_id: negocioId,
-        rol: "owner"
-      });
     }
 
     // 2. Leer LocalStorage
@@ -149,6 +156,7 @@ const MilaImporter = (function () {
         fecha_entrega: p.fechaEntrega ? new Date(p.fechaEntrega).toISOString() : new Date().toISOString(),
         fecha_entregado: p.fechaEntregado ? new Date(p.fechaEntregado).toISOString() : null,
         stock_descontado: !!p.stockDescontado,
+        eliminado_en: p.eliminadoEn ? new Date(p.eliminadoEn).toISOString() : null,
         observaciones: p.observaciones || null
       })).filter(p => p.receta_id);
 
