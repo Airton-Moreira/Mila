@@ -10,11 +10,12 @@ const Pedidos = (function () {
 
   let filtroEstado = "";
   let searchTerm = "";
-  let vista = "lista"; // "lista" | "proximas"
+  let vista = "lista"; // "lista" | "proximas" | "papelera"
 
   async function render(container) {
-    const [pedidos, clientes, recetas] = await Promise.all([
+    const [pedidos, pedidosPapelera, clientes, recetas] = await Promise.all([
       MilaDB.Pedidos.all(),
+      MilaDB.Pedidos.papelera(),
       MilaDB.Clientes.all(),
       MilaDB.Recetas.all()
     ]);
@@ -26,6 +27,7 @@ const Pedidos = (function () {
     const nombreReceta = id => recetasMap.get(id) || "Producto eliminado";
 
     const ordenados = (pedidos || []).slice().sort((a, b) => new Date(a.fechaEntrega) - new Date(b.fechaEntrega));
+    const ordenadosPapelera = (pedidosPapelera || []).slice().sort((a, b) => new Date(b.eliminadoEn || 0) - new Date(a.eliminadoEn || 0));
 
     let filtrados = ordenados;
     if (filtroEstado) filtrados = filtrados.filter(p => p.estado === filtroEstado);
@@ -37,14 +39,20 @@ const Pedidos = (function () {
       });
     }
 
+    const cantPapelera = ordenadosPapelera.length;
+    const subtitulo = vista === "papelera"
+      ? `${cantPapelera} pedido${cantPapelera === 1 ? "" : "s"} en la papelera`
+      : `${ordenados.length} pedido${ordenados.length === 1 ? "" : "s"} registrados en total`;
+
     container.innerHTML = `
       <div class="view-header">
         <div>
           <span class="eyebrow">Encargos</span>
           <h1>Pedidos anticipados</h1>
-          <p class="subtitle">${ordenados.length} pedido${ordenados.length === 1 ? "" : "s"} registrados en total</p>
+          <p class="subtitle">${subtitulo}</p>
         </div>
         <div class="view-actions">
+          ${vista === "papelera" && cantPapelera > 0 ? `<button class="btn btn-danger" id="btnVaciarPapelera">Vaciar papelera</button>` : ""}
           <button class="btn btn-primary" id="btnNuevoPedido">+ Nuevo pedido</button>
         </div>
       </div>
@@ -52,12 +60,17 @@ const Pedidos = (function () {
       <div class="tabs">
         <button class="tab-btn ${vista === "lista" ? "active" : ""}" data-tab="lista">Todos los pedidos</button>
         <button class="tab-btn ${vista === "proximas" ? "active" : ""}" data-tab="proximas">Próximas entregas</button>
+        <button class="tab-btn ${vista === "papelera" ? "active" : ""}" data-tab="papelera">Papelera (${cantPapelera})</button>
       </div>
 
-      ${vista === "lista" ? renderLista(filtrados, nombreCliente, nombreReceta) : renderProximas(ordenados, nombreCliente, nombreReceta)}
+      ${vista === "lista"
+        ? renderLista(filtrados, nombreCliente, nombreReceta)
+        : (vista === "proximas"
+          ? renderProximas(ordenados, nombreCliente, nombreReceta)
+          : renderPapelera(ordenadosPapelera, nombreCliente, nombreReceta))}
     `;
 
-    document.getElementById("btnNuevoPedido").addEventListener("click", () => abrirFormulario());
+    document.getElementById("btnNuevoPedido")?.addEventListener("click", () => abrirFormulario());
     container.querySelectorAll(".tab-btn").forEach(b => b.addEventListener("click", () => { vista = b.dataset.tab; render(container); }));
 
     if (vista === "lista") {
@@ -70,7 +83,20 @@ const Pedidos = (function () {
       container.querySelectorAll("[data-edit]").forEach(b => b.addEventListener("click", () => abrirFormulario(b.dataset.edit)));
       container.querySelectorAll("[data-del]").forEach(b => b.addEventListener("click", () => eliminar(b.dataset.del, container)));
       container.querySelectorAll("[data-estado-select]").forEach(sel => sel.addEventListener("change", (e) => cambiarEstado(e.target.dataset.estadoSelect, e.target.value, container, e.target)));
-    } else {
+    } else if (vista === "proximas") {
+      container.querySelectorAll("[data-view]").forEach(b => b.addEventListener("click", () => verDetalle(b.dataset.view)));
+    } else if (vista === "papelera") {
+      const btnVaciar = document.getElementById("btnVaciarPapelera");
+      if (btnVaciar) btnVaciar.addEventListener("click", () => vaciarPapelera(container));
+
+      container.querySelectorAll("[data-restore]").forEach(b => b.addEventListener("click", () => {
+        const id = b.dataset.restore || b.getAttribute("data-restore");
+        restaurarPedido(id, container);
+      }));
+      container.querySelectorAll("[data-del-permanent]").forEach(b => b.addEventListener("click", () => {
+        const id = b.dataset.delPermanent || b.getAttribute("data-del-permanent");
+        eliminarDefinitivo(id, container);
+      }));
       container.querySelectorAll("[data-view]").forEach(b => b.addEventListener("click", () => verDetalle(b.dataset.view)));
     }
   }
@@ -170,6 +196,58 @@ const Pedidos = (function () {
         </div>
       `;
     }).join("");
+  }
+
+  function renderPapelera(pedidos, nombreCliente, nombreReceta) {
+    if (pedidos.length === 0) {
+      return `
+        <div class="empty-state">
+          <div class="emoji">🗑️</div>
+          <strong>La papelera está vacía</strong>
+          <p>Los pedidos que elimines aparecerán acá para que puedas restaurarlos cuando quieras.</p>
+        </div>
+      `;
+    }
+
+    return `
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Cliente</th>
+              <th>Producto</th>
+              <th>Entrega</th>
+              <th>Estado previo</th>
+              <th class="text-right">Total</th>
+              <th>Eliminado el</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            ${pedidos.map(p => filaPapelera(p, nombreCliente, nombreReceta)).join("")}
+          </tbody>
+        </table>
+      </div>
+    `;
+  }
+
+  function filaPapelera(p, nombreCliente, nombreReceta) {
+    return `
+      <tr>
+        <td><strong style="cursor:pointer" data-view="${p.id}">${MilaUtils.escapeHtml(nombreCliente(p.clienteId))}</strong></td>
+        <td>${MilaUtils.escapeHtml(nombreReceta(p.recetaId))} <span class="text-muted">× ${p.cantidad}</span></td>
+        <td>${MilaUtils.formatDate(p.fechaEntrega)} ${p.horaEntrega ? `· ${p.horaEntrega}` : ""}</td>
+        <td><span class="badge ${MilaUtils.estadoBadgeClass(p.estado)}">${p.estado}</span></td>
+        <td class="text-right num">${MilaUtils.money(p.total)}</td>
+        <td class="text-muted">${MilaUtils.formatDateTime(p.eliminadoEn)}</td>
+        <td>
+          <div class="row-actions">
+            <button class="btn btn-outline btn-sm" data-restore="${p.id}">Restaurar</button>
+            <button class="btn btn-danger btn-sm" data-del-permanent="${p.id}">Eliminar definitivamente</button>
+          </div>
+        </td>
+      </tr>
+    `;
   }
 
   /* ---------- alta / edición ---------- */
@@ -573,13 +651,52 @@ const Pedidos = (function () {
   async function eliminar(id, container) {
     const p = await MilaDB.Pedidos.get(id);
     if (!p) return;
-    let msg = "¿Eliminar este pedido? Esta acción no se puede deshacer.";
+    let msg = "¿Mover este pedido a la papelera?";
     if (p.stockDescontado) {
-      msg = "Este pedido ya descontó materias primas del inventario. Eliminarlo NO devuelve el stock automáticamente. ¿Eliminar de todas formas?";
+      msg = "Este pedido ya descontó materias primas del inventario. Moverlo a la papelera NO devuelve el stock automáticamente.\n\n¿Mover a la papelera?";
     }
     if (!MilaUtils.confirmAction(msg)) return;
+    await MilaDB.Pedidos.mandarAPapelera(id);
+    MilaUtils.toast("Pedido movido a la papelera", "success");
+    await render(container);
+  }
+
+  async function restaurarPedido(id, container) {
+    const p = await MilaDB.Pedidos.get(id);
+    if (!p) return;
+
+    const [cliente, receta] = await Promise.all([
+      MilaDB.Clientes.get(p.clienteId),
+      MilaDB.Recetas.get(p.recetaId)
+    ]);
+
+    if (!cliente || !receta) {
+      const faltantes = [];
+      if (!cliente) faltantes.push("el cliente original");
+      if (!receta) faltantes.push("la receta original");
+      MilaUtils.toast(`Aviso: ${faltantes.join(" y ")} ya no existe en el sistema.`, "warn");
+    }
+
+    await MilaDB.Pedidos.restaurar(id);
+    MilaUtils.toast("Pedido restaurado", "success");
+    await render(container);
+  }
+
+  async function eliminarDefinitivo(id, container) {
+    const seguro = MilaUtils.confirmAction("¿Eliminar este pedido definitivamente? Esta acción no se puede deshacer.");
+    if (!seguro) return;
     await MilaDB.Pedidos.remove(id);
-    MilaUtils.toast("Pedido eliminado", "success");
+    MilaUtils.toast("Pedido eliminado definitivamente", "success");
+    await render(container);
+  }
+
+  async function vaciarPapelera(container) {
+    const enPapelera = await MilaDB.Pedidos.papelera();
+    if (enPapelera.length === 0) return;
+    const seguro = MilaUtils.confirmAction(`¿Eliminar definitivamente los ${enPapelera.length} pedido${enPapelera.length === 1 ? "" : "s"} de la papelera? Esta acción no se puede deshacer.`);
+    if (!seguro) return;
+    await MilaDB.Pedidos.vaciarPapelera();
+    MilaUtils.toast(`Se eliminaron definitivamente ${enPapelera.length} pedido${enPapelera.length === 1 ? "" : "s"}`, "success");
     await render(container);
   }
 
