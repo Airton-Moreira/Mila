@@ -23,3 +23,4 @@ switch ($_GET['accion'] ?? '') {
     default:              http_response_code(400); $r = ['error' => 'Acción inválida'];
 }
 echo json_encode($r, JSON_UNESCAPED_UNICODE);
+
