@@ -1,0 +1,192 @@
+CREATE TABLE IF NOT EXISTS negocios (
+    id CHAR(36) PRIMARY KEY,
+    nombre VARCHAR(255) NOT NULL,
+    tipo_negocio VARCHAR(100) NOT NULL DEFAULT 'reposteria',
+    timezone VARCHAR(100) NOT NULL DEFAULT 'America/Argentina/Cordoba',
+    moneda VARCHAR(10) NOT NULL DEFAULT 'ARS',
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS clientes (
+    id CHAR(36) PRIMARY KEY,
+    negocio_id CHAR(36) NOT NULL,
+    nombre VARCHAR(255) NOT NULL,
+    telefono VARCHAR(50),
+    email VARCHAR(255),
+    direccion VARCHAR(255),
+    notas TEXT,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (negocio_id)
+        REFERENCES negocios(id)
+        ON DELETE CASCADE
+);
+
+-- 3. MATERIAS PRIMAS
+CREATE TABLE IF NOT EXISTS materias_primas (
+    id CHAR(36) PRIMARY KEY,
+    negocio_id CHAR(36) NOT NULL,
+    nombre VARCHAR(255) NOT NULL,
+    categoria VARCHAR(100) DEFAULT 'Insumo',
+    stock_actual DECIMAL(14,3) NOT NULL DEFAULT 0,
+    stock_minimo DECIMAL(14,3) NOT NULL DEFAULT 0,
+    costo_unitario DECIMAL(14,2) NOT NULL DEFAULT 0,
+    unidad VARCHAR(50) NOT NULL DEFAULT 'g',
+    proveedor VARCHAR(255),
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (negocio_id)
+        REFERENCES negocios(id)
+        ON DELETE CASCADE
+);
+
+-- 4. RECETAS
+CREATE TABLE IF NOT EXISTS recetas (
+    id CHAR(36) PRIMARY KEY,
+    negocio_id CHAR(36) NOT NULL,
+    nombre VARCHAR(255) NOT NULL,
+    categoria VARCHAR(100) NOT NULL DEFAULT 'Tortas',
+    rendimiento DECIMAL(14,2) NOT NULL DEFAULT 1,
+    unidad_rendimiento VARCHAR(100) NOT NULL DEFAULT 'porciones',
+    precio_venta DECIMAL(14,2) NOT NULL DEFAULT 0,
+    instrucciones TEXT,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (negocio_id)
+        REFERENCES negocios(id)
+        ON DELETE CASCADE
+);
+
+-- 5. INGREDIENTES DE RECETAS
+CREATE TABLE IF NOT EXISTS receta_ingredientes (
+    id CHAR(36) PRIMARY KEY,
+    receta_id CHAR(36) NOT NULL,
+    materia_prima_id CHAR(36) NOT NULL,
+    cantidad DECIMAL(14,3) NOT NULL,
+    unidad VARCHAR(50) NOT NULL,
+
+    FOREIGN KEY (receta_id)
+        REFERENCES recetas(id)
+        ON DELETE CASCADE,
+
+    FOREIGN KEY (materia_prima_id)
+        REFERENCES materias_primas(id)
+        ON DELETE CASCADE
+);
+
+-- 6. PEDIDOS
+CREATE TABLE IF NOT EXISTS pedidos (
+    id CHAR(36) PRIMARY KEY,
+    negocio_id CHAR(36) NOT NULL,
+    cliente_id CHAR(36),
+    receta_id CHAR(36),
+    cantidad DECIMAL(14,2) NOT NULL DEFAULT 1,
+    precio_unitario DECIMAL(14,2) NOT NULL,
+    total DECIMAL(14,2) NOT NULL,
+    costo_produccion DECIMAL(14,2) NOT NULL DEFAULT 0,
+    utilidad DECIMAL(14,2) NOT NULL DEFAULT 0,
+    estado VARCHAR(30) NOT NULL,
+    fecha_pedido DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    fecha_entrega DATETIME NULL,
+    fecha_entregado DATETIME NULL,
+    stock_descontado BOOLEAN NOT NULL DEFAULT FALSE,
+    observaciones TEXT,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (negocio_id)
+        REFERENCES negocios(id)
+        ON DELETE CASCADE,
+
+    FOREIGN KEY (cliente_id)
+        REFERENCES clientes(id)
+        ON DELETE SET NULL,
+
+    FOREIGN KEY (receta_id)
+        REFERENCES recetas(id)
+        ON DELETE RESTRICT
+);
+
+-- 7. MOVIMIENTOS DE STOCK
+CREATE TABLE IF NOT EXISTS movimientos_stock (
+    id CHAR(36) PRIMARY KEY,
+    negocio_id CHAR(36) NOT NULL,
+    materia_prima_id CHAR(36) NOT NULL,
+    tipo VARCHAR(20) NOT NULL,
+    cantidad DECIMAL(14,3) NOT NULL,
+    motivo TEXT,
+    pedido_id CHAR(36),
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (negocio_id)
+        REFERENCES negocios(id)
+        ON DELETE CASCADE,
+
+    FOREIGN KEY (materia_prima_id)
+        REFERENCES materias_primas(id)
+        ON DELETE CASCADE,
+
+    FOREIGN KEY (pedido_id)
+        REFERENCES pedidos(id)
+        ON DELETE SET NULL
+);
+
+-- 8. COMPRAS
+CREATE TABLE IF NOT EXISTS compras (
+    id CHAR(36) PRIMARY KEY,
+    negocio_id CHAR(36) NOT NULL,
+    materia_prima_id CHAR(36) NOT NULL,
+    proveedor VARCHAR(255),
+    cantidad DECIMAL(14,3) NOT NULL,
+    unidad VARCHAR(50) NOT NULL,
+    costo_total DECIMAL(14,2) NOT NULL,
+    fecha DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (negocio_id)
+        REFERENCES negocios(id)
+        ON DELETE CASCADE,
+
+    FOREIGN KEY (materia_prima_id)
+        REFERENCES materias_primas(id)
+        ON DELETE CASCADE
+);
+
+-- 9. GASTOS FIJOS
+CREATE TABLE IF NOT EXISTS gastos_fijos (
+    id CHAR(36) PRIMARY KEY,
+    negocio_id CHAR(36) NOT NULL,
+    concepto VARCHAR(255) NOT NULL,
+    monto DECIMAL(14,2) NOT NULL,
+    periodicidad VARCHAR(50) NOT NULL DEFAULT 'mensual',
+    fecha DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (negocio_id)
+        REFERENCES negocios(id)
+        ON DELETE CASCADE
+);
+
+-- ============================================
+-- ÍNDICES
+-- ============================================
+
+CREATE INDEX IF NOT EXISTS idx_pedidos_negocio_fecha
+ON pedidos(negocio_id, fecha_entregado, estado);
+
+CREATE INDEX IF NOT EXISTS idx_pedidos_negocio_estado
+ON pedidos(negocio_id, estado);
+
+CREATE INDEX IF NOT EXISTS idx_compras_negocio_fecha
+ON compras(negocio_id, fecha);
+
+CREATE INDEX IF NOT EXISTS idx_movimientos_negocio
+ON movimientos_stock(negocio_id, materia_prima_id);
+
+CREATE INDEX IF NOT EXISTS idx_recetas_negocio
+ON recetas(negocio_id);
+
+CREATE INDEX IF NOT EXISTS idx_clientes_negocio
+ON clientes(negocio_id);
+
+CREATE INDEX IF NOT EXISTS idx_materias_primas_negocio
+ON materias_primas(negocio_id);
