@@ -2,6 +2,8 @@
 // Todas las funciones reciben la conexión $pdo como primer parámetro.
 // Pryeba de comentario
 // 1) rpc_search_recipes
+
+//
 function buscarRecetas(PDO $pdo, string $q = '', ?string $categoria = null): array
 {
     $sql = "SELECT id, nombre, categoria, rendimiento, unidad_rendimiento, precio_venta
