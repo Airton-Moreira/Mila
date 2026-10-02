@@ -7,48 +7,130 @@ const Recetas = (function () {
 
   let searchTerm = "";
   let ingredienteRowSeq = 0;
+  let vista = "lista"; // "lista" | "papelera"
 
   async function render(container) {
-    const recetas = await MilaDB.Recetas.all();
-    const sorted = (recetas || []).slice().sort((a, b) => a.nombre.localeCompare(b.nombre));
-    const filtradas = searchTerm ? sorted.filter(r => r.nombre.toLowerCase().includes(searchTerm.toLowerCase())) : sorted;
+    const [recetas, recetasPapelera] = await Promise.all([
+      MilaDB.Recetas.all(),
+      MilaDB.Recetas.papelera()
+    ]);
 
+    const sorted = (recetas || []).slice().sort((a, b) => a.nombre.localeCompare(b.nombre));
+    const sortedPapelera = (recetasPapelera || []).slice().sort((a, b) => new Date(b.eliminadoEn || 0) - new Date(a.eliminadoEn || 0));
+
+    const filtradas = searchTerm ? sorted.filter(r => r.nombre.toLowerCase().includes(searchTerm.toLowerCase())) : sorted;
     const tarjetasHtml = await Promise.all(filtradas.map(r => tarjetaReceta(r)));
+
+    const cantPapelera = sortedPapelera.length;
+    const subtitulo = vista === "papelera"
+      ? `${cantPapelera} receta${cantPapelera === 1 ? "" : "s"} en la papelera`
+      : `${sorted.length} producto${sorted.length === 1 ? "" : "s"} en el recetario`;
 
     container.innerHTML = `
       <div class="view-header">
         <div>
           <span class="eyebrow">Fichas técnicas</span>
           <h1>Recetas</h1>
-          <p class="subtitle">${sorted.length} producto${sorted.length === 1 ? "" : "s"} en el recetario</p>
+          <p class="subtitle">${subtitulo}</p>
         </div>
         <div class="view-actions">
+          ${vista === "papelera" && cantPapelera > 0 ? `<button class="btn btn-danger" id="btnVaciarPapelera">Vaciar papelera</button>` : ""}
           <button class="btn btn-primary" id="btnNuevaReceta">+ Nueva receta</button>
         </div>
       </div>
 
-      <div class="search-bar">
-        <input type="search" id="buscadorRecetas" placeholder="Buscar receta…" value="${MilaUtils.escapeHtml(searchTerm)}">
+      <div class="tabs">
+        <button class="tab-btn ${vista === "lista" ? "active" : ""}" data-tab="lista">Todas las recetas</button>
+        <button class="tab-btn ${vista === "papelera" ? "active" : ""}" data-tab="papelera">Papelera (${cantPapelera})</button>
       </div>
 
-      ${filtradas.length === 0 ? `
-        <div class="empty-state">
-          <div class="emoji">📖</div>
-          <strong>Todavía no hay recetas</strong>
-          <p>Creá la primera ficha técnica para poder calcular costos y armar pedidos.</p>
-        </div>` : `
-      <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(280px,1fr))">
-        ${tarjetasHtml.join("")}
-      </div>`}
+      ${vista === "lista" ? `
+        <div class="search-bar">
+          <input type="search" id="buscadorRecetas" placeholder="Buscar receta…" value="${MilaUtils.escapeHtml(searchTerm)}">
+        </div>
+
+        ${filtradas.length === 0 ? `
+          <div class="empty-state">
+            <div class="emoji">📖</div>
+            <strong>Todavía no hay recetas</strong>
+            <p>Creá la primera ficha técnica para poder calcular costos y armar pedidos.</p>
+          </div>` : `
+        <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(280px,1fr))">
+          ${tarjetasHtml.join("")}
+        </div>`}
+      ` : renderPapelera(sortedPapelera)}
     `;
 
-    document.getElementById("btnNuevaReceta").addEventListener("click", () => abrirFormulario());
-    const buscador = document.getElementById("buscadorRecetas");
-    if (buscador) buscador.addEventListener("input", (e) => { searchTerm = e.target.value; render(container); });
+    document.getElementById("btnNuevaReceta")?.addEventListener("click", () => abrirFormulario());
+    container.querySelectorAll(".tab-btn").forEach(b => b.addEventListener("click", () => { vista = b.dataset.tab; render(container); }));
 
-    container.querySelectorAll("[data-edit]").forEach(b => b.addEventListener("click", () => abrirFormulario(b.dataset.edit)));
-    container.querySelectorAll("[data-del]").forEach(b => b.addEventListener("click", () => eliminar(b.dataset.del, container)));
-    container.querySelectorAll("[data-view]").forEach(b => b.addEventListener("click", () => verDetalle(b.dataset.view)));
+    if (vista === "lista") {
+      const buscador = document.getElementById("buscadorRecetas");
+      if (buscador) buscador.addEventListener("input", (e) => { searchTerm = e.target.value; render(container); });
+
+      container.querySelectorAll("[data-edit]").forEach(b => b.addEventListener("click", () => abrirFormulario(b.dataset.edit)));
+      container.querySelectorAll("[data-del]").forEach(b => b.addEventListener("click", () => eliminar(b.dataset.del, container)));
+      container.querySelectorAll("[data-view]").forEach(b => b.addEventListener("click", () => verDetalle(b.dataset.view)));
+    } else {
+      const btnVaciar = document.getElementById("btnVaciarPapelera");
+      if (btnVaciar) btnVaciar.addEventListener("click", () => vaciarPapelera(container));
+
+      container.querySelectorAll("[data-restore]").forEach(b => b.addEventListener("click", () => {
+        const id = b.dataset.restore || b.getAttribute("data-restore");
+        restaurarReceta(id, container);
+      }));
+      container.querySelectorAll("[data-del-permanent]").forEach(b => b.addEventListener("click", () => {
+        const id = b.dataset.delPermanent || b.getAttribute("data-del-permanent");
+        eliminarDefinitivo(id, container);
+      }));
+      container.querySelectorAll("[data-view]").forEach(b => b.addEventListener("click", () => verDetalle(b.dataset.view)));
+    }
+  }
+
+  function renderPapelera(recetas) {
+    if (recetas.length === 0) {
+      return `
+        <div class="empty-state">
+          <div class="emoji">🗑️</div>
+          <strong>La papelera de recetas está vacía</strong>
+          <p>Las recetas que elimines aparecerán acá para que puedas restaurarlas cuando quieras.</p>
+        </div>
+      `;
+    }
+
+    return `
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Receta</th>
+              <th>Categoría</th>
+              <th>Rendimiento</th>
+              <th class="text-right">Precio de venta</th>
+              <th>Eliminada el</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            ${recetas.map(r => `
+              <tr>
+                <td><strong style="cursor:pointer" data-view="${r.id}">${MilaUtils.escapeHtml(r.nombre)}</strong></td>
+                <td><span class="tag-pill">${MilaUtils.escapeHtml(r.categoria || "General")}</span></td>
+                <td>${MilaUtils.num(r.rendimiento)} ${MilaUtils.escapeHtml(r.unidadRendimiento || "")}</td>
+                <td class="text-right num">${MilaUtils.money(r.precioVenta)}</td>
+                <td class="text-muted">${MilaUtils.formatDateTime(r.eliminadoEn)}</td>
+                <td>
+                  <div class="row-actions">
+                    <button class="btn btn-outline btn-sm" data-restore="${r.id}">Restaurar</button>
+                    <button class="btn btn-danger btn-sm" data-del-permanent="${r.id}">Eliminar definitivamente</button>
+                  </div>
+                </td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+      </div>
+    `;
   }
 
   async function tarjetaReceta(r) {
@@ -348,12 +430,36 @@ const Recetas = (function () {
     const todosPedidos = await MilaDB.Pedidos.all();
     const pedidosAsociados = (todosPedidos || []).filter(p => p.recetaId === id);
     if (pedidosAsociados.length > 0) {
-      MilaUtils.toast(`No se puede eliminar: hay ${pedidosAsociados.length} pedido(s) que usan esta receta.`, "error");
+      MilaUtils.toast(`No se puede mover a la papelera: hay ${pedidosAsociados.length} pedido(s) activo(s) que usan esta receta.`, "error");
       return;
     }
-    if (!MilaUtils.confirmAction(`¿Eliminar la receta "${receta.nombre}"?`)) return;
+    if (!MilaUtils.confirmAction(`¿Mover la receta "${receta.nombre}" a la papelera?`)) return;
+    await MilaDB.Recetas.mandarAPapelera(id);
+    MilaUtils.toast("Receta movida a la papelera", "success");
+    await render(container);
+  }
+
+  async function restaurarReceta(id, container) {
+    await MilaDB.Recetas.restaurar(id);
+    MilaUtils.toast("Receta restaurada", "success");
+    await render(container);
+  }
+
+  async function eliminarDefinitivo(id, container) {
+    const seguro = MilaUtils.confirmAction("¿Eliminar esta receta definitivamente? Esta acción no se puede deshacer.");
+    if (!seguro) return;
     await MilaDB.Recetas.remove(id);
-    MilaUtils.toast("Receta eliminada", "success");
+    MilaUtils.toast("Receta eliminada definitivamente", "success");
+    await render(container);
+  }
+
+  async function vaciarPapelera(container) {
+    const enPapelera = await MilaDB.Recetas.papelera();
+    if (enPapelera.length === 0) return;
+    const seguro = MilaUtils.confirmAction(`¿Eliminar definitivamente las ${enPapelera.length} receta${enPapelera.length === 1 ? "" : "s"} de la papelera? Esta acción no se puede deshacer.`);
+    if (!seguro) return;
+    await MilaDB.Recetas.vaciarPapelera();
+    MilaUtils.toast(`Se eliminaron definitivamente ${enPapelera.length} receta${enPapelera.length === 1 ? "" : "s"}`, "success");
     await render(container);
   }
 

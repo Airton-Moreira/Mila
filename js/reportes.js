@@ -12,14 +12,16 @@ const Reportes = (function () {
 
   async function render(container) {
     const rango = calcularRango();
-    const [pedidosList, clientesList, recetasList] = await Promise.all([
+    const [pedidosList, clientesList, clientesPapeleraList, recetasList, recetasPapeleraList] = await Promise.all([
       MilaDB.Pedidos.all(),
       MilaDB.Clientes.all(),
-      MilaDB.Recetas.all()
+      MilaDB.Clientes.papelera(),
+      MilaDB.Recetas.all(),
+      MilaDB.Recetas.papelera()
     ]);
 
-    const clientesMap = new Map((clientesList || []).map(c => [c.id, `${c.nombre} ${c.apellido || ""}`.trim()]));
-    const recetasMap = new Map((recetasList || []).map(r => [r.id, r.nombre]));
+    const clientesMap = new Map([...(clientesList || []), ...(clientesPapeleraList || [])].map(c => [c.id, `${c.nombre} ${c.apellido || ""}`.trim()]));
+    const recetasMap = new Map([...(recetasList || []), ...(recetasPapeleraList || [])].map(r => [r.id, r.nombre]));
 
     const nombreCliente = id => clientesMap.get(id) || "Cliente eliminado";
     const nombreReceta = id => recetasMap.get(id) || "Producto eliminado";

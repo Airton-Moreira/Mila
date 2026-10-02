@@ -13,15 +13,17 @@ const Pedidos = (function () {
   let vista = "lista"; // "lista" | "proximas" | "papelera"
 
   async function render(container) {
-    const [pedidos, pedidosPapelera, clientes, recetas] = await Promise.all([
+    const [pedidos, pedidosPapelera, clientes, clientesPapelera, recetas, recetasPapelera] = await Promise.all([
       MilaDB.Pedidos.all(),
       MilaDB.Pedidos.papelera(),
       MilaDB.Clientes.all(),
-      MilaDB.Recetas.all()
+      MilaDB.Clientes.papelera(),
+      MilaDB.Recetas.all(),
+      MilaDB.Recetas.papelera()
     ]);
 
-    const clientesMap = new Map((clientes || []).map(c => [c.id, `${c.nombre} ${c.apellido || ""}`.trim()]));
-    const recetasMap = new Map((recetas || []).map(r => [r.id, r.nombre]));
+    const clientesMap = new Map([...(clientes || []), ...(clientesPapelera || [])].map(c => [c.id, `${c.nombre} ${c.apellido || ""}`.trim()]));
+    const recetasMap = new Map([...(recetas || []), ...(recetasPapelera || [])].map(r => [r.id, r.nombre]));
 
     const nombreCliente = id => clientesMap.get(id) || "Cliente eliminado";
     const nombreReceta = id => recetasMap.get(id) || "Producto eliminado";
