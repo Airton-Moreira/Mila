@@ -277,6 +277,20 @@ const MilaDB = (function () {
     remove: id => remove("recetas", id)
   };
 
+  async function limpiarPapeleraExpirada(dias = DIAS_RETENCION_PAPELERA) {
+    const todos = await getAll("pedidos");
+    const ahora = Date.now();
+    const limiteMs = dias * 24 * 60 * 60 * 1000;
+    const expirados = todos.filter(p => {
+      if (!p.eliminadoEn) return false;
+      const fechaElim = new Date(p.eliminadoEn).getTime();
+      return !isNaN(fechaElim) && (ahora - fechaElim) > limiteMs;
+    });
+    for (const exp of expirados) {
+      await remove("pedidos", exp.id);
+    }
+  }
+
   const Pedidos = {
     all: () => getAll("pedidos"),
     get: id => getById("pedidos", id),
