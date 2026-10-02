@@ -15,15 +15,6 @@ CREATE TABLE IF NOT EXISTS negocios (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE TABLE IF NOT EXISTS miembros (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-    negocio_id UUID NOT NULL REFERENCES negocios(id) ON DELETE CASCADE,
-    rol TEXT NOT NULL CHECK (rol IN ('owner', 'admin', 'staff')),
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    UNIQUE(user_id, negocio_id)
-);
-
 -- 2. CLIENTES
 CREATE TABLE IF NOT EXISTS clientes (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
