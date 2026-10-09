@@ -1,1 +1,1 @@
-<?php session_start(); $_SESSION['admin'] = true; echo 'ok';
+<?php session_start(); $_SESSION['admin'] = true; echo 'ok'; false; echo "no";

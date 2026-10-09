@@ -190,3 +190,541 @@ ON clientes(negocio_id);
 
 CREATE INDEX IF NOT EXISTS idx_materias_primas_negocio
 ON materias_primas(negocio_id);
+
+
+-- 1. NEGOCIOS ---------------------------------------------------------
+INSERT INTO negocios (id, nombre, tipo_negocio, timezone, moneda) VALUES
+('a0000000-0000-0000-0000-000000000001', 'Mila Repostería Artesanal', 'reposteria', 'America/Argentina/Cordoba', 'ARS');
+
+
+-- 2. CLIENTES ---------------------------------------------------------
+INSERT INTO clientes (id, negocio_id, nombre, telefono, email, direccion, notas) VALUES
+('c0000000-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-000000000001', 'Lucía Fernández',  '351-4112233', 'lucia.fernandez@mail.com', 'Nueva Córdoba, Obispo Trejo 450',  'Prefiere tortas sin nueces'),
+('c0000000-0000-0000-0000-000000000002', 'a0000000-0000-0000-0000-000000000001', 'Martín Gómez',     '351-5223344', 'martin.gomez@mail.com',    'Cerro de las Rosas, Av. Rafael Núñez 4200', NULL),
+('c0000000-0000-0000-0000-000000000003', 'a0000000-0000-0000-0000-000000000001', 'Camila Rossi',     '351-6334455', 'camila.rossi@mail.com',    'Alta Córdoba, Av. Gral. Paz 1800', 'Cliente frecuente'),
+('c0000000-0000-0000-0000-000000000004', 'a0000000-0000-0000-0000-000000000001', 'Julián Pereyra',   '351-7445566', NULL,                       'Güemes, Belgrano 900', NULL),
+('c0000000-0000-0000-0000-000000000005', 'a0000000-0000-0000-0000-000000000001', 'Sofía Ledesma',    '351-8556677', 'sofia.ledesma@mail.com',   'General Paz, Av. Maipú 650', 'Todavía no hizo pedidos'),
+('c0000000-0000-0000-0000-000000000006', 'a0000000-0000-0000-0000-000000000001', 'Cafetería Nube',   '351-9667788', 'pedidos@cafeterianube.com', 'Nueva Córdoba, Bv. Illia 320', 'Pedidos semanales para el local');
+
+
+-- 3. MATERIAS PRIMAS --------------------------------------------------
+-- costo_unitario = costo por UNIDAD de medida (por gramo, por ml o por unidad)
+INSERT INTO materias_primas (id, negocio_id, nombre, categoria, stock_actual, stock_minimo, costo_unitario, unidad, proveedor) VALUES
+('b0000000-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-000000000001', 'Harina 000',            'Insumo',      25000, 5000, 0.90,   'g',      'Distribuidora Córdoba'),
+('b0000000-0000-0000-0000-000000000002', 'a0000000-0000-0000-0000-000000000001', 'Azúcar',               'Insumo',      18000, 4000, 1.10,   'g',      'Distribuidora Córdoba'),
+('b0000000-0000-0000-0000-000000000003', 'a0000000-0000-0000-0000-000000000001', 'Manteca',              'Lácteo',       6000, 2000, 8.50,   'g',      'Lácteos del Centro'),
+('b0000000-0000-0000-0000-000000000004', 'a0000000-0000-0000-0000-000000000001', 'Huevos',               'Insumo',        120,   60, 250.00, 'unidad', 'Granja San José'),
+('b0000000-0000-0000-0000-000000000005', 'a0000000-0000-0000-0000-000000000001', 'Chocolate semiamargo', 'Insumo',         800, 1000, 12.00,  'g',      'Casa del Chocolate'),
+('b0000000-0000-0000-0000-000000000006', 'a0000000-0000-0000-0000-000000000001', 'Dulce de leche',       'Insumo',       7000, 2000, 4.50,   'g',      'Lácteos del Centro'),
+('b0000000-0000-0000-0000-000000000007', 'a0000000-0000-0000-0000-000000000001', 'Crema de leche',       'Lácteo',       4000, 1500, 3.20,   'ml',     'Lácteos del Centro'),
+('b0000000-0000-0000-0000-000000000008', 'a0000000-0000-0000-0000-000000000001', 'Esencia de vainilla',  'Saborizante',   300,  100, 9.00,   'ml',     'Casa del Chocolate'),
+('b0000000-0000-0000-0000-000000000009', 'a0000000-0000-0000-0000-000000000001', 'Frutillas',            'Fruta',         500, 1000, 6.00,   'g',      'Verdulería La Esquina'),
+('b0000000-0000-0000-0000-000000000010', 'a0000000-0000-0000-0000-000000000001', 'Cajas de cartón',      'Packaging',      40,   20, 450.00, 'unidad', 'Packaging Sur');
+
+
+-- 4. RECETAS ----------------------------------------------------------
+INSERT INTO recetas (id, negocio_id, nombre, categoria, rendimiento, unidad_rendimiento, precio_venta, instrucciones) VALUES
+('d0000000-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-000000000001', 'Torta de chocolate', 'Tortas',     12, 'porciones', 28000, 'Mezclar secos, batir húmedos, hornear 40 min a 180°C.'),
+('d0000000-0000-0000-0000-000000000002', 'a0000000-0000-0000-0000-000000000001', 'Torta Rogel',        'Tortas',     16, 'porciones', 32000, 'Armar discos finos y rellenar con dulce de leche.'),
+('d0000000-0000-0000-0000-000000000003', 'a0000000-0000-0000-0000-000000000001', 'Alfajores',          'Alfajores',  24, 'unidades',  14400, 'Hornear tapas, enfriar y rellenar con dulce de leche.'),
+('d0000000-0000-0000-0000-000000000004', 'a0000000-0000-0000-0000-000000000001', 'Medialunas',        'Panadería',  12, 'unidades',   7200, 'Laminar la masa, formar y hornear.'),
+('d0000000-0000-0000-0000-000000000005', 'a0000000-0000-0000-0000-000000000001', 'Tarta de frutillas', 'Tartas',     10, 'porciones', 21000, 'Base sablée, crema y frutillas frescas.'),
+('d0000000-0000-0000-0000-000000000006', 'a0000000-0000-0000-0000-000000000001', 'Brownie',            'Postres',    16, 'porciones', 16000, 'Fundir chocolate con manteca, mezclar y hornear.');
+
+
+-- 5. INGREDIENTES DE RECETAS -----------------------------------------
+INSERT INTO receta_ingredientes (id, receta_id, materia_prima_id, cantidad, unidad) VALUES
+-- Torta de chocolate
+('f0000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000000001', 300, 'g'),
+('f0000000-0000-0000-0000-000000000002', 'd0000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000000002', 250, 'g'),
+('f0000000-0000-0000-0000-000000000003', 'd0000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000000003', 200, 'g'),
+('f0000000-0000-0000-0000-000000000004', 'd0000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000000004',   4, 'unidad'),
+('f0000000-0000-0000-0000-000000000005', 'd0000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000000005', 250, 'g'),
+-- Torta Rogel
+('f0000000-0000-0000-0000-000000000006', 'd0000000-0000-0000-0000-000000000002', 'b0000000-0000-0000-0000-000000000001', 400, 'g'),
+('f0000000-0000-0000-0000-000000000007', 'd0000000-0000-0000-0000-000000000002', 'b0000000-0000-0000-0000-000000000003', 250, 'g'),
+('f0000000-0000-0000-0000-000000000008', 'd0000000-0000-0000-0000-000000000002', 'b0000000-0000-0000-0000-000000000004',   6, 'unidad'),
+('f0000000-0000-0000-0000-000000000009', 'd0000000-0000-0000-0000-000000000002', 'b0000000-0000-0000-0000-000000000006', 800, 'g'),
+('f0000000-0000-0000-0000-000000000010', 'd0000000-0000-0000-0000-000000000002', 'b0000000-0000-0000-0000-000000000002', 100, 'g'),
+-- Alfajores
+('f0000000-0000-0000-0000-000000000011', 'd0000000-0000-0000-0000-000000000003', 'b0000000-0000-0000-0000-000000000001', 300, 'g'),
+('f0000000-0000-0000-0000-000000000012', 'd0000000-0000-0000-0000-000000000003', 'b0000000-0000-0000-0000-000000000003', 150, 'g'),
+('f0000000-0000-0000-0000-000000000013', 'd0000000-0000-0000-0000-000000000003', 'b0000000-0000-0000-0000-000000000002', 120, 'g'),
+('f0000000-0000-0000-0000-000000000014', 'd0000000-0000-0000-0000-000000000003', 'b0000000-0000-0000-0000-000000000004',   3, 'unidad'),
+('f0000000-0000-0000-0000-000000000015', 'd0000000-0000-0000-0000-000000000003', 'b0000000-0000-0000-0000-000000000006', 400, 'g'),
+('f0000000-0000-0000-0000-000000000016', 'd0000000-0000-0000-0000-000000000003', 'b0000000-0000-0000-0000-000000000008',   5, 'ml'),
+-- Medialunas
+('f0000000-0000-0000-0000-000000000017', 'd0000000-0000-0000-0000-000000000004', 'b0000000-0000-0000-0000-000000000001', 500, 'g'),
+('f0000000-0000-0000-0000-000000000018', 'd0000000-0000-0000-0000-000000000004', 'b0000000-0000-0000-0000-000000000003', 250, 'g'),
+('f0000000-0000-0000-0000-000000000019', 'd0000000-0000-0000-0000-000000000004', 'b0000000-0000-0000-0000-000000000002',  80, 'g'),
+('f0000000-0000-0000-0000-000000000020', 'd0000000-0000-0000-0000-000000000004', 'b0000000-0000-0000-0000-000000000004',   2, 'unidad'),
+('f0000000-0000-0000-0000-000000000021', 'd0000000-0000-0000-0000-000000000004', 'b0000000-0000-0000-0000-000000000008',   5, 'ml'),
+-- Tarta de frutillas
+('f0000000-0000-0000-0000-000000000022', 'd0000000-0000-0000-0000-000000000005', 'b0000000-0000-0000-0000-000000000001', 250, 'g'),
+('f0000000-0000-0000-0000-000000000023', 'd0000000-0000-0000-0000-000000000005', 'b0000000-0000-0000-0000-000000000003', 125, 'g'),
+('f0000000-0000-0000-0000-000000000024', 'd0000000-0000-0000-0000-000000000005', 'b0000000-0000-0000-0000-000000000002', 100, 'g'),
+('f0000000-0000-0000-0000-000000000025', 'd0000000-0000-0000-0000-000000000005', 'b0000000-0000-0000-0000-000000000009', 400, 'g'),
+('f0000000-0000-0000-0000-000000000026', 'd0000000-0000-0000-0000-000000000005', 'b0000000-0000-0000-0000-000000000007', 200, 'ml'),
+('f0000000-0000-0000-0000-000000000027', 'd0000000-0000-0000-0000-000000000005', 'b0000000-0000-0000-0000-000000000004',   2, 'unidad'),
+-- Brownie
+('f0000000-0000-0000-0000-000000000028', 'd0000000-0000-0000-0000-000000000006', 'b0000000-0000-0000-0000-000000000005', 300, 'g'),
+('f0000000-0000-0000-0000-000000000029', 'd0000000-0000-0000-0000-000000000006', 'b0000000-0000-0000-0000-000000000003', 200, 'g'),
+('f0000000-0000-0000-0000-000000000030', 'd0000000-0000-0000-0000-000000000006', 'b0000000-0000-0000-0000-000000000002', 250, 'g'),
+('f0000000-0000-0000-0000-000000000031', 'd0000000-0000-0000-0000-000000000006', 'b0000000-0000-0000-0000-000000000001', 120, 'g'),
+('f0000000-0000-0000-0000-000000000032', 'd0000000-0000-0000-0000-000000000006', 'b0000000-0000-0000-0000-000000000004',   4, 'unidad');
+
+
+-- 6. PEDIDOS ----------------------------------------------------------
+-- total = cantidad * precio_unitario | utilidad = total - costo_produccion
+-- estados usados: 'pendiente', 'en_preparacion', 'entregado', 'cancelado'
+INSERT INTO pedidos (id, negocio_id, cliente_id, receta_id, cantidad, precio_unitario, total, costo_produccion, utilidad, estado, fecha_pedido, fecha_entrega, fecha_entregado, stock_descontado, observaciones) VALUES
+('e0000000-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-000000000001', 'c0000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000001', 1, 28000, 28000, 6245.00,  21755.00, 'entregado',      '2026-09-10 10:00:00', '2026-09-12 16:00:00', '2026-09-12 15:45:00', TRUE,  'Cumpleaños'),
+('e0000000-0000-0000-0000-000000000002', 'a0000000-0000-0000-0000-000000000001', 'c0000000-0000-0000-0000-000000000002', 'd0000000-0000-0000-0000-000000000003', 2, 14400, 28800, 8544.00,  20256.00, 'entregado',      '2026-09-14 09:30:00', '2026-09-16 18:00:00', '2026-09-16 18:10:00', TRUE,  NULL),
+('e0000000-0000-0000-0000-000000000003', 'a0000000-0000-0000-0000-000000000001', 'c0000000-0000-0000-0000-000000000003', 'd0000000-0000-0000-0000-000000000002', 1, 32000, 32000, 7695.00,  24305.00, 'entregado',      '2026-09-18 11:00:00', '2026-09-20 17:00:00', '2026-09-20 16:50:00', TRUE,  NULL),
+('e0000000-0000-0000-0000-000000000004', 'a0000000-0000-0000-0000-000000000001', 'c0000000-0000-0000-0000-000000000006', 'd0000000-0000-0000-0000-000000000004', 5,  7200, 36000, 16040.00, 19960.00, 'entregado',      '2026-09-22 08:00:00', '2026-09-23 08:00:00', '2026-09-23 08:15:00', TRUE,  'Entrega en el local'),
+('e0000000-0000-0000-0000-000000000005', 'a0000000-0000-0000-0000-000000000001', 'c0000000-0000-0000-0000-000000000006', 'd0000000-0000-0000-0000-000000000006', 3, 16000, 48000, 20049.00, 27951.00, 'entregado',      '2026-09-29 08:30:00', '2026-09-30 08:00:00', '2026-09-30 08:05:00', TRUE,  NULL),
+('e0000000-0000-0000-0000-000000000006', 'a0000000-0000-0000-0000-000000000001', 'c0000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000005', 1, 21000, 21000, 4937.50,  16062.50, 'entregado',      '2026-10-01 10:00:00', '2026-10-03 12:00:00', '2026-10-03 12:30:00', TRUE,  NULL),
+('e0000000-0000-0000-0000-000000000007', 'a0000000-0000-0000-0000-000000000001', 'c0000000-0000-0000-0000-000000000004', 'd0000000-0000-0000-0000-000000000001', 2, 28000, 56000, 12490.00, 43510.00, 'entregado',      '2026-10-02 15:00:00', '2026-10-04 19:00:00', '2026-10-04 19:00:00', TRUE,  'Casamiento, pidió decoración'),
+('e0000000-0000-0000-0000-000000000008', 'a0000000-0000-0000-0000-000000000001', 'c0000000-0000-0000-0000-000000000002', 'd0000000-0000-0000-0000-000000000006', 1, 16000, 16000, 6683.00,  9317.00,  'en_preparacion', '2026-10-05 09:00:00', '2026-10-10 16:00:00', NULL,                  TRUE,  NULL),
+('e0000000-0000-0000-0000-000000000009', 'a0000000-0000-0000-0000-000000000001', 'c0000000-0000-0000-0000-000000000003', 'd0000000-0000-0000-0000-000000000003', 3, 14400, 43200, 12816.00, 30384.00, 'pendiente',      '2026-10-07 12:00:00', '2026-10-12 17:00:00', NULL,                  FALSE, 'Para evento familiar'),
+('e0000000-0000-0000-0000-000000000010', 'a0000000-0000-0000-0000-000000000001', 'c0000000-0000-0000-0000-000000000006', 'd0000000-0000-0000-0000-000000000004', 4,  7200, 28800, 12832.00, 15968.00, 'pendiente',      '2026-10-08 08:00:00', '2026-10-11 08:00:00', NULL,                  FALSE, NULL),
+('e0000000-0000-0000-0000-000000000011', 'a0000000-0000-0000-0000-000000000001', 'c0000000-0000-0000-0000-000000000004', 'd0000000-0000-0000-0000-000000000002', 1, 32000, 32000, 7695.00,  24305.00, 'cancelado',      '2026-09-25 13:00:00', '2026-09-28 16:00:00', NULL,                  FALSE, 'Cancelado por el cliente'),
+('e0000000-0000-0000-0000-000000000012', 'a0000000-0000-0000-0000-000000000001', 'c0000000-0000-0000-0000-000000000003', 'd0000000-0000-0000-0000-000000000006', 1, 16000, 16000, 6683.00,  9317.00,  'entregado',      '2026-10-06 10:00:00', '2026-10-07 17:00:00', '2026-10-07 17:20:00', TRUE,  NULL);
+
+
+-- 7. MOVIMIENTOS DE STOCK --------------------------------------------
+-- tipo: 'entrada' (compra), 'salida' (uso en pedido), 'ajuste'
+INSERT INTO movimientos_stock (id, negocio_id, materia_prima_id, tipo, cantidad, motivo, pedido_id) VALUES
+('a1000000-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000000001', 'entrada', 25000, 'Compra de harina',               NULL),
+('a1000000-0000-0000-0000-000000000002', 'a0000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000000003', 'entrada',  6000, 'Compra de manteca',              NULL),
+('a1000000-0000-0000-0000-000000000003', 'a0000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000000001', 'salida',    300, 'Pedido entregado',               'e0000000-0000-0000-0000-000000000001'),
+('a1000000-0000-0000-0000-000000000004', 'a0000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000000003', 'salida',    200, 'Pedido entregado',               'e0000000-0000-0000-0000-000000000001'),
+('a1000000-0000-0000-0000-000000000005', 'a0000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000000005', 'salida',    250, 'Pedido entregado',               'e0000000-0000-0000-0000-000000000001'),
+('a1000000-0000-0000-0000-000000000006', 'a0000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000000006', 'salida',    800, 'Pedido entregado',               'e0000000-0000-0000-0000-000000000002'),
+('a1000000-0000-0000-0000-000000000007', 'a0000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000000005', 'ajuste',    100, 'Ajuste por merma al fundir',      NULL),
+('a1000000-0000-0000-0000-000000000008', 'a0000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000000009', 'entrada',  1000, 'Compra de frutillas',            NULL),
+('a1000000-0000-0000-0000-000000000009', 'a0000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000000009', 'salida',    400, 'Pedido entregado',               'e0000000-0000-0000-0000-000000000006');
+
+
+-- 8. COMPRAS ----------------------------------------------------------
+INSERT INTO compras (id, negocio_id, materia_prima_id, proveedor, cantidad, unidad, costo_total, fecha) VALUES
+('a2000000-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000000001', 'Distribuidora Córdoba',   25000, 'g',      22500.00, '2026-09-01 09:00:00'),
+('a2000000-0000-0000-0000-000000000002', 'a0000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000000001', 'Distribuidora Córdoba',   10000, 'g',      10000.00, '2026-10-01 09:00:00'),
+('a2000000-0000-0000-0000-000000000003', 'a0000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000000002', 'Distribuidora Córdoba',   20000, 'g',      22000.00, '2026-09-01 09:30:00'),
+('a2000000-0000-0000-0000-000000000004', 'a0000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000000003', 'Lácteos del Centro',       6000, 'g',      51000.00, '2026-09-02 10:00:00'),
+('a2000000-0000-0000-0000-000000000005', 'a0000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000000003', 'Lácteos del Centro',       6000, 'g',      55200.00, '2026-10-02 10:00:00'),
+('a2000000-0000-0000-0000-000000000006', 'a0000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000000004', 'Granja San José',          180, 'unidad', 45000.00, '2026-09-05 08:00:00'),
+('a2000000-0000-0000-0000-000000000007', 'a0000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000000005', 'Casa del Chocolate',      2000, 'g',      24000.00, '2026-09-08 11:00:00'),
+('a2000000-0000-0000-0000-000000000008', 'a0000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000000006', 'Lácteos del Centro',       8000, 'g',      36000.00, '2026-09-08 11:30:00'),
+('a2000000-0000-0000-0000-000000000009', 'a0000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000000009', 'Verdulería La Esquina',   1000, 'g',       6000.00, '2026-09-30 07:30:00'),
+('a2000000-0000-0000-0000-000000000010', 'a0000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000000010', 'Packaging Sur',            100, 'unidad', 45000.00, '2026-09-03 12:00:00');
+
+
+-- 9. GASTOS FIJOS -----------------------------------------------------
+INSERT INTO gastos_fijos (id, negocio_id, concepto, monto, periodicidad, fecha) VALUES
+('a3000000-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-000000000001', 'Alquiler del local', 250000.00, 'mensual', '2026-10-01 00:00:00'),
+('a3000000-0000-0000-0000-000000000002', 'a0000000-0000-0000-0000-000000000001', 'Electricidad',        45000.00, 'mensual', '2026-10-05 00:00:00'),
+('a3000000-0000-0000-0000-000000000003', 'a0000000-0000-0000-0000-000000000001', 'Gas',                 28000.00, 'mensual', '2026-10-05 00:00:00'),
+('a3000000-0000-0000-0000-000000000004', 'a0000000-0000-0000-0000-000000000001', 'Internet',            18000.00, 'mensual', '2026-10-05 00:00:00'),
+('a3000000-0000-0000-0000-000000000005', 'a0000000-0000-0000-0000-000000000001', 'Monotributo',         35000.00, 'mensual', '2026-10-10 00:00:00'),
+('a3000000-0000-0000-0000-000000000006', 'a0000000-0000-0000-0000-000000000001', 'Seguro del local',   120000.00, 'anual',   '2026-03-15 00:00:00');
+
+
+
+
+-- A1. Todas las columnas de una tabla
+SELECT * FROM clientes;
+
+-- A2. Solo algunas columnas
+SELECT nombre, categoria, precio_venta FROM recetas;
+
+-- A3. Alias con AS
+SELECT nombre AS producto, precio_venta AS precio, rendimiento AS porciones
+FROM recetas;
+
+-- A4. DISTINCT: categorías de recetas sin repetir
+SELECT DISTINCT categoria FROM recetas;
+
+-- A5. Cálculo en el SELECT: precio por porción/unidad
+SELECT nombre, precio_venta, rendimiento,
+       ROUND(precio_venta / rendimiento, 2) AS precio_por_unidad
+FROM recetas;
+
+
+
+-- B1. Comparación simple
+SELECT nombre, precio_venta FROM recetas WHERE precio_venta > 20000;
+
+-- B2. Igualdad con texto
+SELECT id, total, fecha_pedido FROM pedidos WHERE estado = 'entregado';
+
+-- B3. AND: pedidos entregados de más de 30000
+SELECT id, total, estado FROM pedidos WHERE estado = 'entregado' AND total > 30000;
+
+-- B4. OR
+SELECT id, estado, fecha_entrega FROM pedidos
+WHERE estado = 'pendiente' OR estado = 'en_preparacion';
+
+-- B5. IN (equivale al OR anterior, más corto)
+SELECT id, estado, fecha_entrega FROM pedidos
+WHERE estado IN ('pendiente', 'en_preparacion');
+
+-- B6. NOT / distinto
+SELECT id, estado, total FROM pedidos WHERE estado <> 'cancelado';
+
+-- B7. BETWEEN con fechas: pedidos de septiembre 2026
+SELECT id, fecha_pedido, total FROM pedidos
+WHERE fecha_pedido BETWEEN '2026-09-01 00:00:00' AND '2026-09-30 23:59:59';
+
+-- B8. LIKE: clientes cuyo nombre empieza con L
+SELECT nombre, telefono FROM clientes WHERE nombre LIKE 'L%';
+
+-- B9. LIKE: materias primas que contienen "ch" en el nombre
+SELECT nombre, categoria FROM materias_primas WHERE nombre LIKE '%ch%';
+
+-- B10. IS NULL: clientes sin email
+SELECT nombre, telefono FROM clientes WHERE email IS NULL;
+
+-- B11. IS NULL: pedidos que todavía no fueron entregados
+SELECT id, estado, fecha_entrega FROM pedidos WHERE fecha_entregado IS NULL;
+
+-- B12. Booleano: pedidos a los que ya se les descontó el stock
+SELECT id, estado FROM pedidos WHERE stock_descontado = TRUE;
+
+
+-- C1. Recetas de la más cara a la más barata
+SELECT nombre, precio_venta FROM recetas ORDER BY precio_venta DESC;
+
+-- C2. Las 3 recetas más caras
+SELECT nombre, precio_venta FROM recetas ORDER BY precio_venta DESC LIMIT 3;
+
+-- C3. Orden por dos columnas: categoría A-Z y dentro de cada una por precio
+SELECT categoria, nombre, precio_venta FROM recetas ORDER BY categoria ASC, precio_venta DESC;
+
+-- C4. Los 5 pedidos más recientes
+SELECT id, fecha_pedido, total FROM pedidos ORDER BY fecha_pedido DESC LIMIT 5;
+
+-- D1. COUNT: cuántos pedidos hay
+SELECT COUNT(*) AS cantidad_pedidos FROM pedidos;
+
+-- D2. COUNT con WHERE: cuántos están entregados
+SELECT COUNT(*) AS entregados FROM pedidos WHERE estado = 'entregado';
+
+-- D3. MAX, MIN y AVG del precio de las recetas
+SELECT MAX(precio_venta)          AS receta_mas_cara,
+       MIN(precio_venta)          AS receta_mas_barata,
+       ROUND(AVG(precio_venta),2) AS precio_promedio
+FROM recetas;
+
+-- D4. SUM, AVG, MAX y MIN sobre pedidos entregados
+SELECT SUM(total)              AS ventas_totales,
+       SUM(utilidad)           AS utilidad_total,
+       ROUND(AVG(total), 2)    AS ticket_promedio,
+       MAX(total)              AS pedido_mas_grande,
+       MIN(total)              AS pedido_mas_chico
+FROM pedidos
+WHERE estado = 'entregado';
+
+-- D5. MAX con subconsulta: ¿cuál fue el pedido más caro? (muestra toda la fila)
+SELECT id, cliente_id, total, fecha_pedido
+FROM pedidos
+WHERE total = (SELECT MAX(total) FROM pedidos);
+
+-- D6. MIN y MAX de fechas: primer y último pedido
+SELECT MIN(fecha_pedido) AS primer_pedido, MAX(fecha_pedido) AS ultimo_pedido FROM pedidos;
+
+-- D7. COUNT(DISTINCT): cuántos clientes distintos compraron
+SELECT COUNT(DISTINCT cliente_id) AS clientes_que_compraron FROM pedidos;
+
+-- E1. Cantidad de recetas por categoría
+SELECT categoria, COUNT(*) AS cantidad_recetas
+FROM recetas
+GROUP BY categoria;
+
+-- E2. Pedidos y monto total por estado
+SELECT estado, COUNT(*) AS cantidad, SUM(total) AS monto_total
+FROM pedidos
+GROUP BY estado;
+
+-- E3. Ventas y utilidad por mes
+SELECT DATE_FORMAT(fecha_pedido, '%Y-%m') AS mes,
+       COUNT(*)      AS pedidos,
+       SUM(total)    AS ventas,
+       SUM(utilidad) AS utilidad
+FROM pedidos
+WHERE estado <> 'cancelado'
+GROUP BY DATE_FORMAT(fecha_pedido, '%Y-%m')
+ORDER BY mes;
+
+-- E4. HAVING: estados con más de 2 pedidos
+SELECT estado, COUNT(*) AS cantidad
+FROM pedidos
+GROUP BY estado
+HAVING COUNT(*) > 2;
+
+-- E5. HAVING con SUM: categorías de materias primas con stock total mayor a 5000
+SELECT categoria, SUM(stock_actual) AS stock_total
+FROM materias_primas
+GROUP BY categoria
+HAVING SUM(stock_actual) > 5000;
+
+
+SELECT p.id, c.nombre AS cliente, p.total, p.estado
+FROM pedidos p
+INNER JOIN clientes c ON p.cliente_id = c.id;
+
+
+SELECT p.fecha_pedido,
+       c.nombre AS cliente,
+       r.nombre AS producto,
+       p.cantidad,
+       p.total,
+       p.estado
+FROM pedidos p
+JOIN clientes c ON p.cliente_id = c.id
+JOIN recetas  r ON p.receta_id  = r.id
+ORDER BY p.fecha_pedido;
+
+SELECT c.nombre, COUNT(p.id) AS cantidad_pedidos
+FROM clientes c
+LEFT JOIN pedidos p ON p.cliente_id = c.id
+GROUP BY c.id, c.nombre
+ORDER BY cantidad_pedidos DESC;
+
+
+SELECT c.nombre, c.telefono
+FROM clientes c
+LEFT JOIN pedidos p ON p.cliente_id = c.id
+WHERE p.id IS NULL;
+
+
+SELECT r.nombre AS receta, mp.nombre AS ingrediente, ri.cantidad, ri.unidad
+FROM receta_ingredientes ri
+JOIN recetas r          ON ri.receta_id = r.id
+JOIN materias_primas mp ON ri.materia_prima_id = mp.id
+WHERE r.nombre = 'Torta de chocolate';
+
+
+SELECT c.nombre,
+       COUNT(p.id)  AS pedidos,
+       SUM(p.total) AS total_gastado,
+       MAX(p.total) AS pedido_mas_grande
+FROM clientes c
+JOIN pedidos p ON p.cliente_id = c.id
+WHERE p.estado = 'entregado'
+GROUP BY c.id, c.nombre
+ORDER BY total_gastado DESC;
+
+
+SELECT c.nombre, COUNT(p.id) AS pedidos
+FROM clientes c
+JOIN pedidos p ON p.cliente_id = c.id
+GROUP BY c.id, c.nombre
+HAVING COUNT(p.id) >= 2;
+
+
+SELECT r.nombre,
+       ROUND(SUM(ri.cantidad * mp.costo_unitario), 2)                  AS costo_receta,
+       ROUND(SUM(ri.cantidad * mp.costo_unitario) / r.rendimiento, 2)  AS costo_por_unidad,
+       r.precio_venta,
+       ROUND(r.precio_venta - SUM(ri.cantidad * mp.costo_unitario), 2) AS ganancia_bruta
+FROM recetas r
+JOIN receta_ingredientes ri ON ri.receta_id = r.id
+JOIN materias_primas mp     ON ri.materia_prima_id = mp.id
+GROUP BY r.id, r.nombre, r.rendimiento, r.precio_venta
+ORDER BY ganancia_bruta DESC;
+
+SELECT r.nombre,
+       SUM(p.cantidad) AS unidades_vendidas,
+       SUM(p.total)    AS ventas,
+       SUM(p.utilidad) AS utilidad
+FROM pedidos p
+JOIN recetas r ON p.receta_id = r.id
+WHERE p.estado = 'entregado'
+GROUP BY r.id, r.nombre
+ORDER BY utilidad DESC;
+
+
+SELECT mp.nombre,
+       c.fecha,
+       c.cantidad,
+       c.unidad,
+       c.costo_total,
+       ROUND(c.costo_total / c.cantidad, 2) AS precio_por_unidad
+FROM compras c
+JOIN materias_primas mp ON c.materia_prima_id = mp.id
+ORDER BY mp.nombre, c.fecha;
+
+SELECT mp.nombre,
+       MIN(c.costo_total / c.cantidad)           AS precio_minimo,
+       MAX(c.costo_total / c.cantidad)           AS precio_maximo,
+       ROUND(AVG(c.costo_total / c.cantidad), 2) AS precio_promedio,
+       COUNT(*)                                  AS cantidad_compras
+FROM compras c
+JOIN materias_primas mp ON c.materia_prima_id = mp.id
+GROUP BY mp.id, mp.nombre
+HAVING COUNT(*) > 1;
+
+
+SELECT mp.nombre, ms.tipo, ms.cantidad, ms.motivo, ms.pedido_id
+FROM movimientos_stock ms
+JOIN materias_primas mp ON ms.materia_prima_id = mp.id
+LEFT JOIN pedidos p     ON ms.pedido_id = p.id
+ORDER BY ms.created_at;
+
+SELECT nombre, precio_venta
+FROM recetas
+WHERE precio_venta > (SELECT AVG(precio_venta) FROM recetas);
+
+
+SELECT id, total
+FROM pedidos
+WHERE total > (SELECT AVG(total) FROM pedidos WHERE estado = 'entregado');
+
+
+SELECT nombre
+FROM clientes
+WHERE id IN (SELECT p.cliente_id
+             FROM pedidos p
+             JOIN recetas r ON p.receta_id = r.id
+             WHERE r.nombre = 'Torta de chocolate');
+
+
+SELECT nombre, categoria
+FROM materias_primas
+WHERE id NOT IN (SELECT materia_prima_id FROM receta_ingredientes);
+
+
+SELECT nombre, precio_venta
+FROM recetas
+WHERE precio_venta = (SELECT MIN(precio_venta) FROM recetas)
+   OR precio_venta = (SELECT MAX(precio_venta) FROM recetas);
+
+
+
+SELECT nombre, stock_actual, stock_minimo,
+       (stock_minimo - stock_actual) AS faltante
+FROM materias_primas
+WHERE stock_actual < stock_minimo;
+
+
+SELECT nombre, stock_actual, stock_minimo,
+       CASE
+           WHEN stock_actual < stock_minimo       THEN 'COMPRAR YA'
+           WHEN stock_actual < stock_minimo * 1.5 THEN 'Stock justo'
+           ELSE 'Stock OK'
+       END AS situacion
+FROM materias_primas
+ORDER BY stock_actual / stock_minimo;
+
+
+SELECT id, total,
+       CASE
+           WHEN total >= 40000 THEN 'Grande'
+           WHEN total >= 25000 THEN 'Mediano'
+           ELSE 'Chico'
+       END AS tamano_pedido
+FROM pedidos;
+
+
+SELECT nombre, IFNULL(email, 'Sin email') AS email, COALESCE(notas, 'Sin notas') AS notas
+FROM clientes;
+
+
+SELECT CONCAT(UPPER(nombre), ' - ', categoria) AS etiqueta,
+       LENGTH(nombre) AS largo_nombre
+FROM recetas;
+
+
+SELECT id, total, utilidad,
+       ROUND(utilidad / total * 100, 1) AS margen_porcentaje
+FROM pedidos
+WHERE estado = 'entregado'
+ORDER BY margen_porcentaje DESC;
+
+
+SELECT id, fecha_pedido, fecha_entregado,
+       DATEDIFF(fecha_entregado, fecha_pedido) AS dias_hasta_entrega
+FROM pedidos
+WHERE fecha_entregado IS NOT NULL;
+
+
+SELECT ROUND(AVG(DATEDIFF(fecha_entregado, fecha_pedido)), 1) AS demora_promedio_dias,
+       MAX(DATEDIFF(fecha_entregado, fecha_pedido))           AS demora_maxima_dias,
+       MIN(DATEDIFF(fecha_entregado, fecha_pedido))           AS demora_minima_dias
+FROM pedidos
+WHERE fecha_entregado IS NOT NULL;
+
+
+SELECT DAYOFWEEK(fecha_pedido) AS dia_semana, COUNT(*) AS pedidos
+FROM pedidos
+GROUP BY DAYOFWEEK(fecha_pedido)
+ORDER BY pedidos DESC;
+
+-- H10. Entregas atrasadas: se entregaron después de la fecha prometida
+SELECT id, fecha_entrega AS prometida, fecha_entregado AS real_entrega
+FROM pedidos
+WHERE fecha_entregado > fecha_entrega;
+
+
+SELECT periodicidad, COUNT(*) AS cantidad, SUM(monto) AS total
+FROM gastos_fijos
+GROUP BY periodicidad;
+
+
+SELECT SUM(CASE WHEN periodicidad = 'anual' THEN monto / 12 ELSE monto END) AS gasto_fijo_mensual
+FROM gastos_fijos;
+
+
+SELECT MAX(monto) AS gasto_mayor, MIN(monto) AS gasto_menor, ROUND(AVG(monto), 2) AS gasto_promedio
+FROM gastos_fijos;
+
+
+SELECT 'Ingreso' AS tipo, fecha_pedido AS fecha, total AS monto
+FROM pedidos
+WHERE estado = 'entregado'
+UNION ALL
+SELECT 'Gasto fijo', fecha, monto
+FROM gastos_fijos
+ORDER BY fecha;
+
+
+SELECT
+    (SELECT COALESCE(SUM(utilidad), 0)
+       FROM pedidos
+      WHERE estado = 'entregado'
+        AND fecha_pedido >= '2026-10-01' AND fecha_pedido < '2026-11-01') AS utilidad_pedidos,
+    (SELECT COALESCE(SUM(CASE WHEN periodicidad = 'anual' THEN monto / 12 ELSE monto END), 0)
+       FROM gastos_fijos)                                                 AS gastos_fijos_mes,
+    (SELECT COALESCE(SUM(utilidad), 0)
+       FROM pedidos
+      WHERE estado = 'entregado'
+        AND fecha_pedido >= '2026-10-01' AND fecha_pedido < '2026-11-01')
+    -
+    (SELECT COALESCE(SUM(CASE WHEN periodicidad = 'anual' THEN monto / 12 ELSE monto END), 0)
+       FROM gastos_fijos)                                                 AS resultado_neto;
+
+
+START TRANSACTION;
+
+
+INSERT INTO clientes (id, negocio_id, nombre, telefono)
+VALUES ('c0000000-0000-0000-0000-000000000099', 'a0000000-0000-0000-0000-000000000001', 'Cliente de prueba', '351-0000000');
+
+
+UPDATE recetas
+SET precio_venta = precio_venta * 1.10
+WHERE categoria = 'Tortas';
+
+
+UPDATE materias_primas
+SET stock_actual = stock_actual + 2000
+WHERE nombre = 'Chocolate semiamargo';
+
+
+DELETE FROM clientes WHERE nombre = 'Cliente de prueba';
+
+
+SELECT nombre, precio_venta FROM recetas WHERE categoria = 'Tortas';
+
+ROLLBACK;  -- cambiá por COMMIT; si querés que los cambios queden guardados
