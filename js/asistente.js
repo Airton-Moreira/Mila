@@ -4,6 +4,8 @@
    con soporte multi-hilo, blocks dinámicos y Chart.js.
    ========================================================= */
 
+
+   /*prueba de comentario */
 const Asistente = (function () {
 
   let activeConversationId = null;
